@@ -26,6 +26,20 @@ from pymaker.util import eth_balance
 RAW_ETH = Address('0x0000000000000000000000000000000000000000')
 
 
+class EthereumAccount:
+    def __init__(self, web3: Web3, address: Address):
+        self.web3 = web3
+        self.address = address
+
+    def balance(self, token: Address) -> Wad:
+        assert(isinstance(token, Address))
+
+        if token == RAW_ETH:
+            return eth_balance(self.web3, self.address)
+        else:
+            return ERC20Token(web3=self.web3, address=token).balance_of(self.address)
+
+
 class OasisMarketMakerKeeper:
     def __init__(self, web3: Web3, otc: MatchingMarket, address: Address):
         self.web3 = web3
@@ -38,7 +52,7 @@ class OasisMarketMakerKeeper:
         # In order to calculate Oasis market maker keeper balance, we have add the balance
         # locked in keeper's open orders...
         our_orders = filter(lambda order: order.maker == self.address, self.otc.get_orders())
-        our_sell_orders = filter(lambda order: order.pay_token == token.address, our_orders)
+        our_sell_orders = filter(lambda order: order.pay_token == token, our_orders)
         balance_in_our_sell_orders = sum(map(lambda order: order.pay_amount, our_sell_orders), Wad(0))
 
         # ...and the balance left in the keeper accounnt
@@ -79,3 +93,8 @@ class OasisMarketMakerKeeper:
         return ERC20Token(web3=self.web3, address=token).transfer(base, amount) \
             .transact({'from': self.address}) \
             .successful
+
+
+class RadarRelayMarketMakerKeeper(EthereumAccount):
+    pass
+

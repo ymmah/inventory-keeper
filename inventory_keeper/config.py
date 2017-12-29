@@ -27,8 +27,8 @@ class Config:
 
         self.tokens = [Token(key, Address(value)) for key, value in data['tokens'].items()]
         self.base_address = Address(data['base']['address'])
-        self.base_description = Address(data['base']['description'])
-        self.members = [Member(item) for item in data['members'].items()]
+        self.base_description = data['base']['description']
+        self.members = map(lambda item: Member(item), data['members'])
 
     def __repr__(self):
         return pformat(vars(self))
@@ -51,9 +51,9 @@ class Member:
         assert(isinstance(data, dict))
 
         self.type = data['type']
-        self.address = data['address']
+        self.address = Address(data['address'])
         self.description = data['description']
-        self.token_ranges = [TokenRange(key, value) for key, value in data['members'].items()]
+        self.token_ranges = [TokenRange(key, value) for key, value in data['tokens'].items()]
 
     def __repr__(self):
         return pformat(vars(self))
