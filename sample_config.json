@@ -9,8 +9,8 @@
     "address": "0x23332554345345345346436436363636363",
     "description": "Optional description"
   },
-  "members": {
-    "member1": {
+  "members": [
+    {
       "type": "oasis-market-maker-keeper",
       "address": "0x3346363463463463464363343643643634",
       "description": "Optional description",
@@ -24,7 +24,7 @@
         "DAI": {}
       }
     },
-    "member2": {
+    {
       "type": "oasis-market-maker-keeper",
       "address": "0x3346363463463463464363343643643634",
       "description": "Optional description",
@@ -38,5 +38,5 @@
         "DAI": {}
       }
     }
-  }
+  ]
 }

@@ -15,38 +15,59 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from pymaker import Address, Wad
+from pprint import pformat
+
+from pymaker import Address
+from pymaker.numeric import Wad
 
 
 class Config:
-    def __init__(self):
-        self.tokens = []
-        self.base_address = None
-        self.base_description = None
-        self.members = []
+    def __init__(self, data: dict):
+        assert(isinstance(data, dict))
+
+        self.tokens = [Token(key, Address(value)) for key, value in data['tokens'].items()]
+        self.base_address = Address(data['base']['address'])
+        self.base_description = Address(data['base']['description'])
+        self.members = [Member(item) for item in data['members'].items()]
+
+    def __repr__(self):
+        return pformat(vars(self))
 
 
 class Token:
     def __init__(self, name: str, address: Address):
+        assert(isinstance(name, str))
+        assert(isinstance(address, Address))
+
         self.name = name
         self.address = address
 
+    def __repr__(self):
+        return pformat(vars(self))
+
 
 class Member:
-    def __init__(self):
-        self.type = None
-        self.address = None
-        self.description = None
-        self.token_ranges = {}
+    def __init__(self, data: dict):
+        assert(isinstance(data, dict))
+
+        self.type = data['type']
+        self.address = data['address']
+        self.description = data['description']
+        self.token_ranges = [TokenRange(key, value) for key, value in data['members'].items()]
+
+    def __repr__(self):
+        return pformat(vars(self))
 
 
 class TokenRange:
-    def __init__(self, token_name: str, min_amount: Wad, avg_amount: Wad, max_amount: Wad):
-        assert(isinstance(min_amount, Wad))
-        assert(isinstance(avg_amount, Wad))
-        assert(isinstance(max_amount, Wad))
+    def __init__(self, token_name: str, data: dict):
+        assert(isinstance(token_name, str))
+        assert(isinstance(data, dict))
 
         self.token_name = token_name
-        self.min_amount = min_amount
-        self.avg_amount = avg_amount
-        self.max_amount = max_amount
+        self.min_amount = Wad.from_number(data['minAmount'])
+        self.avg_amount = Wad.from_number(data['avgAmount'])
+        self.max_amount = Wad.from_number(data['maxAmount'])
+
+    def __repr__(self):
+        return pformat(vars(self))
