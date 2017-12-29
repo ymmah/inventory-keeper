@@ -19,6 +19,7 @@ import argparse
 import logging
 import sys
 
+from texttable import Texttable
 from web3 import Web3, HTTPProvider
 
 from pymaker.lifecycle import Web3Lifecycle
@@ -30,6 +31,9 @@ class InventoryKeeper:
     logger = logging.getLogger('inventory-keeper')
 
     def __init__(self, args: list, **kwargs):
+        self.clear_screen()
+        self.print()
+
         parser = argparse.ArgumentParser(prog='inventory-keeper')
 
         parser.add_argument("--rpc-host", type=str, default="localhost",
@@ -71,6 +75,38 @@ class InventoryKeeper:
     def main(self):
         with Web3Lifecycle(self.web3) as lifecycle:
             self.lifecycle = lifecycle
+
+    def clear_screen(self):
+        print("\033[H\033[J")
+
+    def print(self):
+        base = [["Base account", "62.412000000000000000 ETH_"],
+                ["(0x4234234234234234234234234433232323234424)", "4,000.000000000000000000 WETH"],
+                ["", "313,000.000000000000000000 SAI_"]]
+
+        table = Texttable(max_width=250)
+        table.set_deco(Texttable.HEADER)
+        table.set_cols_dtype(['t', 't'])
+        table.set_cols_align(['l', 'r'])
+        table.set_cols_width([60, 35])
+        table.add_rows([["Base account", "Balance"]] + base)
+
+        print(table.draw())
+        print("")
+
+        base = [["Oasis keeper 1", "62.412000000000000000 ETH_", "62.412000000000000000 ETH_", "62.412000000000000000 ETH_"],
+                ["(0x2342342344242343332344244332323223423424)", "4,000.000000000000000000 WETH", "4,000.000000000000000000 WETH", "4,000.000000000000000000 WETH"],
+                ["", "313,000.000000000000000000 SAI_", "313,000.000000000000000000 SAI_", "313,000.000000000000000000 SAI_"]]
+
+        table = Texttable(max_width=250)
+        table.set_deco(Texttable.HEADER)
+        table.set_cols_dtype(['t', 't', 't', 't'])
+        table.set_cols_align(['l', 'r', 'r', 'r'])
+        table.set_cols_width([60, 35, 37, 33])
+        table.add_rows([["Member accounts", "Balance", "Min", "Max"]] + base)
+
+        print(table.draw())
+
 
 
 if __name__ == '__main__':

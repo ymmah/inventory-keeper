@@ -26,17 +26,6 @@ from pymaker.util import eth_balance
 RAW_ETH = Address('0x0000000000000000000000000000000000000000')
 
 
-class TokenTarget:
-    def __init__(self, min_amount: Wad, avg_amount: Wad, max_amount: Wad):
-        assert(isinstance(min_amount, Wad))
-        assert(isinstance(avg_amount, Wad))
-        assert(isinstance(max_amount, Wad))
-
-        self.min_amount = min_amount
-        self.avg_amount = avg_amount
-        self.max_amount = max_amount
-
-
 class OasisMarketMakerKeeper:
     def __init__(self, web3: Web3, otc: MatchingMarket, address: Address):
         self.web3 = web3
