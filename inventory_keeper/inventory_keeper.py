@@ -100,7 +100,7 @@ class InventoryKeeper:
 
         return result
 
-    def print_base_table(self, table_data):
+    def base_table(self, table_data):
         table = Texttable(max_width=250)
         table.set_deco(Texttable.HEADER)
         table.set_cols_dtype(['t', 't'])
@@ -109,32 +109,42 @@ class InventoryKeeper:
         table.add_rows([["Base account", "Balance"]] + table_data)
         print(table.draw())
 
-    def print(self):
-        longest_token_name = max(map(lambda token: len(token.name), self.config.tokens))
-
-        base_type = EthereumAccount(web3=self.web3, address=self.config.base_address)
-        base_table = map(lambda token: [str(base_type.balance(token.address)) + " " + token.name.ljust(longest_token_name, ".")], self.config.tokens)
-        self.print_base_table(self.add_first_column(base_table, self.config.base_description, self.config.base_address))
-
-        print("")
-
-        members_table = []
-        for member in self.config.members:
-            type = OasisMarketMakerKeeper(web3=self.web3, otc=self.otc, address=member.address)
-            subtable = map(lambda token: [str(type.balance(token.address)) + " " + token.name.ljust(longest_token_name, "."), "", ""], self.config.tokens)
-
-            members_table = members_table + self.add_first_column(subtable, member.description, member.address)
-            members_table.append(["","","",""])
-
+    def members_table(self, table_data):
         table = Texttable(max_width=250)
         table.set_deco(Texttable.HEADER)
         table.set_cols_dtype(['t', 't', 't', 't'])
         table.set_cols_align(['l', 'r', 'r', 'r'])
         table.set_cols_width([60, 35, 37, 33])
-        table.add_rows([["Member accounts", "Balance", "Min", "Max"]] + members_table)
-
+        table.add_rows([["Member accounts", "Balance", "Min", "Max"]] + table_data)
         print(table.draw())
 
+    def print(self):
+        longest_token_name = max(map(lambda token: len(token.name), self.config.tokens))
+
+        base_type = EthereumAccount(web3=self.web3, address=self.config.base_address)
+        base_data = map(lambda token: [str(base_type.balance(token.address)) + " " + token.name.ljust(longest_token_name, ".")], self.config.tokens)
+
+        members_data = []
+        for member in self.config.members:
+            table = []
+            member_type = OasisMarketMakerKeeper(web3=self.web3, otc=self.otc, address=member.address)
+            for member_token in member.tokens:
+                token_name = member_token.token_name
+                token_address = next(filter(lambda token: token.name == token_name, self.config.tokens)).address
+                table.append([
+                    str(member_type.balance(token_address)) + " " + token_name.ljust(longest_token_name, "."),
+                    str(member_token.min_amount) + " " + token_name.ljust(longest_token_name, "."),
+                    str(member_token.max_amount) + " " + token_name.ljust(longest_token_name, ".")
+                ])
+
+            # table = map(lambda token: [str(member_type.balance(token.address)) + " " + token.name.ljust(longest_token_name, "."), "", ""], self.config.tokens)
+
+            members_data = members_data + self.add_first_column(table, member.description, member.address)
+            members_data.append(["","","",""])
+
+        print(self.base_table(self.add_first_column(base_data, self.config.base_description, self.config.base_address)))
+        print("")
+        print(self.members_table(members_data))
 
 
 if __name__ == '__main__':

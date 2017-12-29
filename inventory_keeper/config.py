@@ -53,21 +53,21 @@ class Member:
         self.type = data['type']
         self.address = Address(data['address'])
         self.description = data['description']
-        self.token_ranges = [TokenRange(key, value) for key, value in data['tokens'].items()]
+        self.tokens = [MemberToken(key, value) for key, value in data['tokens'].items()]
 
     def __repr__(self):
         return pformat(vars(self))
 
 
-class TokenRange:
+class MemberToken:
     def __init__(self, token_name: str, data: dict):
         assert(isinstance(token_name, str))
         assert(isinstance(data, dict))
 
         self.token_name = token_name
-        self.min_amount = Wad.from_number(data['minAmount'])
-        self.avg_amount = Wad.from_number(data['avgAmount'])
-        self.max_amount = Wad.from_number(data['maxAmount'])
+        self.min_amount = Wad.from_number(data['minAmount']) if 'minAmount' in data else None
+        self.avg_amount = Wad.from_number(data['avgAmount']) if 'avgAmount' in data else None
+        self.max_amount = Wad.from_number(data['maxAmount']) if 'maxAmount' in data else None
 
     def __repr__(self):
         return pformat(vars(self))
