@@ -137,7 +137,7 @@ class BiboxMarketMakerKeeper:
         assert(isinstance(token_name, str))
         assert(isinstance(token_address, Address))
 
-        all_balances = self.bibox_api.coin_list()
+        all_balances = self.bibox_api.coin_list(retry=True)
         token_balance = next(filter(lambda coin: coin['symbol'] == token_name, all_balances))
         return Wad.from_number(token_balance['totalBalance'])
 
