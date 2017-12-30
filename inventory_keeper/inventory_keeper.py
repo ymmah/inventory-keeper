@@ -128,13 +128,11 @@ class InventoryKeeper:
         else:
             raise Exception(f"Unknown member type: '{member.type}'")
 
-    def add_first_column(self, table, description, address):
+    def add_first_column(self, table, description: str):
         result = []
         for index, row in enumerate(table):
             if index == 0:
                 result.append([description] + row)
-            elif index == 1:
-                result.append([f"({address})"] + row)
             else:
                 result.append([""] + row)
 
@@ -170,7 +168,7 @@ class InventoryKeeper:
 
         base_type = EthereumAccount(web3=self.web3, address=self.config.base_address)
         base_data = map(lambda token: [format_amount(base_type.balance(token.name, token.address), token.name)], self.config.tokens)
-        base_data = self.add_first_column(base_data, self.config.base_description, self.config.base_address)
+        base_data = self.add_first_column(base_data, self.config.base_description)
 
         members_data = []
         for member in self.config.members:
@@ -184,7 +182,7 @@ class InventoryKeeper:
                     format_amount(member_token.max_amount, token.name) if member_token.max_amount else ""
                 ])
 
-            members_data = members_data + self.add_first_column(table, member.description, member.address)
+            members_data = members_data + self.add_first_column(table, member.description)
             members_data.append(["","","",""])
 
         return self.print_base_table(base_data) + "\n\n" + \
