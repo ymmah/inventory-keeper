@@ -66,6 +66,12 @@ class InventoryKeeper:
         parser.add_argument("--gas-price-file", type=str,
                             help="Gas price configuration file")
 
+        parser.add_argument("--inventory-dump-file", type=str,
+                            help="File the keeper will periodically write the inventory dump to")
+
+        parser.add_argument("--inventory-dump-interval", type=int, default=30,
+                            help="Frequency of writing the inventory dump file (in seconds, default: 30)")
+
         parser.add_argument("--debug", dest='debug', action='store_true',
                             help="Enable debug output")
 
@@ -79,11 +85,11 @@ class InventoryKeeper:
                             level=(logging.DEBUG if self.arguments.debug else logging.INFO))
 
         self.clear_screen()
-        self.print()
+        self.print_inventory()
 
     def main(self):
         with Web3Lifecycle(self.web3) as lifecycle:
-            self.lifecycle = lifecycle
+            lifecycle.every(self.arguments.inventory_dump_interval, self.dump_inventory)
 
     def clear_screen(self):
         print("\033[H\033[J")
@@ -100,29 +106,37 @@ class InventoryKeeper:
 
         return result
 
-    def base_table(self, table_data):
+    def print_base_table(self, table_data: list):
+        assert(isinstance(table_data, list))
+
         table = Texttable(max_width=250)
         table.set_deco(Texttable.HEADER)
         table.set_cols_dtype(['t', 't'])
         table.set_cols_align(['l', 'r'])
         table.set_cols_width([60, 35])
         table.add_rows([["Base account", "Balance"]] + table_data)
-        print(table.draw())
+        return table.draw()
 
-    def members_table(self, table_data):
+    def print_members_table(self, table_data: list):
+        assert(isinstance(table_data, list))
+
         table = Texttable(max_width=250)
         table.set_deco(Texttable.HEADER)
         table.set_cols_dtype(['t', 't', 't', 't'])
         table.set_cols_align(['l', 'r', 'r', 'r'])
         table.set_cols_width([60, 35, 37, 33])
         table.add_rows([["Member accounts", "Balance", "Min", "Max"]] + table_data)
-        print(table.draw())
+        return table.draw()
 
-    def print(self):
+    def print_inventory(self):
         longest_token_name = max(map(lambda token: len(token.name), self.config.tokens))
 
+        def format_amount(amount, token_name):
+            return str(amount) + " " + token_name.ljust(longest_token_name, ".")
+
         base_type = EthereumAccount(web3=self.web3, address=self.config.base_address)
-        base_data = map(lambda token: [str(base_type.balance(token.address)) + " " + token.name.ljust(longest_token_name, ".")], self.config.tokens)
+        base_data = map(lambda token: [format_amount(base_type.balance(token.address), token.name)], self.config.tokens)
+        base_data = self.add_first_column(base_data, self.config.base_description, self.config.base_address)
 
         members_data = []
         for member in self.config.members:
@@ -132,19 +146,21 @@ class InventoryKeeper:
                 token_name = member_token.token_name
                 token_address = next(filter(lambda token: token.name == token_name, self.config.tokens)).address
                 table.append([
-                    str(member_type.balance(token_address)) + " " + token_name.ljust(longest_token_name, "."),
-                    str(member_token.min_amount) + " " + token_name.ljust(longest_token_name, "."),
-                    str(member_token.max_amount) + " " + token_name.ljust(longest_token_name, ".")
+                    format_amount(member_type.balance(token_address), token_name),
+                    format_amount(member_token.min_amount, token_name) if member_token.min_amount else "",
+                    format_amount(member_token.max_amount, token_name) if member_token.max_amount else ""
                 ])
-
-            # table = map(lambda token: [str(member_type.balance(token.address)) + " " + token.name.ljust(longest_token_name, "."), "", ""], self.config.tokens)
 
             members_data = members_data + self.add_first_column(table, member.description, member.address)
             members_data.append(["","","",""])
 
-        print(self.base_table(self.add_first_column(base_data, self.config.base_description, self.config.base_address)))
-        print("")
-        print(self.members_table(members_data))
+        return self.print_base_table(base_data) \
+               + "\n\n" \
+               + self.print_members_table(members_data) \
+               + "\n\n"
+
+    def dump_inventory(self):
+        inventory = self.print_inventory()
 
 
 if __name__ == '__main__':
