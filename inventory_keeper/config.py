@@ -26,8 +26,8 @@ class Config:
         assert(isinstance(data, dict))
 
         self.tokens = [Token(key, Address(value)) for key, value in data['tokens'].items()]
+        self.base_name = data['base']['name']
         self.base_address = Address(data['base']['address'])
-        self.base_description = data['base']['description']
         self.members = [Member(item) for item in data['members']]
 
     def __repr__(self):
@@ -50,9 +50,9 @@ class Member:
     def __init__(self, data: dict):
         assert(isinstance(data, dict))
 
+        self.name = data['name']
         self.type = data['type']
         self.address = Address(data['address']) if 'address' in data else None
-        self.description = data['description']
         self.tokens = [MemberToken(key, value) for key, value in data['tokens'].items()]
 
     def __repr__(self):
