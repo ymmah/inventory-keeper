@@ -26,8 +26,10 @@ from texttable import Texttable
 from web3 import Web3, HTTPProvider
 
 from inventory_keeper.config import Config, Member
-from inventory_keeper.type import EthereumAccount, OasisMarketMakerKeeper, RadarRelayMarketMakerKeeper
+from inventory_keeper.type import EthereumAccount, OasisMarketMakerKeeper, RadarRelayMarketMakerKeeper, \
+    EtherDeltaMarketMakerKeeper
 from pymaker import Address
+from pymaker.etherdelta import EtherDelta
 from pymaker.lifecycle import Web3Lifecycle
 from pymaker.numeric import Wad
 from pymaker.oasis import MatchingMarket
@@ -49,6 +51,9 @@ class InventoryKeeper:
 
         parser.add_argument("--oasis-address", type=str, required=True,
                             help="Ethereum address of the OasisDEX contract")
+
+        parser.add_argument("--etherdelta-address", type=str, required=True,
+                            help="Ethereum address of the EtherDelta contract")
 
         parser.add_argument("--config", type=str, required=True,
                             help="Inventory configuration file")
@@ -82,6 +87,7 @@ class InventoryKeeper:
 
         self.web3 = kwargs['web3'] if 'web3' in kwargs else Web3(HTTPProvider(endpoint_uri=f"http://{self.arguments.rpc_host}:{self.arguments.rpc_port}"))
         self.otc = MatchingMarket(web3=self.web3, address=Address(self.arguments.oasis_address))
+        self.etherdelta = EtherDelta(web3=self.web3, address=Address(self.arguments.etherdelta_address))
         self.config = Config(json.load(open(self.arguments.config)))
 
         self.first_inventory_dump = True
@@ -99,6 +105,8 @@ class InventoryKeeper:
 
         if member.type == 'oasis-market-maker-keeper':
             return OasisMarketMakerKeeper(web3=self.web3, otc=self.otc, address=member.address)
+        elif member.type == 'etherdelta-market-maker-keeper':
+            return EtherDeltaMarketMakerKeeper(web3=self.web3, etherdelta=self.etherdelta, address=member.address)
         elif member.type == 'radarrelay-market-maker-keeper':
             return RadarRelayMarketMakerKeeper(web3=self.web3, address=member.address)
         else:

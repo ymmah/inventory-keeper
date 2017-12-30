@@ -18,6 +18,7 @@
 from web3 import Web3
 
 from pymaker import Address
+from pymaker.etherdelta import EtherDelta
 from pymaker.numeric import Wad
 from pymaker.oasis import MatchingMarket
 from pymaker.token import ERC20Token
@@ -93,6 +94,21 @@ class OasisMarketMakerKeeper:
         return ERC20Token(web3=self.web3, address=token).transfer(base, amount) \
             .transact({'from': self.address}) \
             .successful
+
+
+class EtherDeltaMarketMakerKeeper:
+    def __init__(self, web3: Web3, etherdelta: EtherDelta, address: Address):
+        self.web3 = web3
+        self.etherdelta = etherdelta
+        self.address = address
+
+    def balance(self, token: Address) -> Wad:
+        assert(isinstance(token, Address))
+
+        if token == RAW_ETH:
+            return eth_balance(self.web3, self.address) + self.etherdelta.balance_of(self.address)
+        else:
+            return ERC20Token(self.web3, token).balance_of(self.address) + self.etherdelta.balance_of_token(token, self.address)
 
 
 class RadarRelayMarketMakerKeeper(EthereumAccount):
