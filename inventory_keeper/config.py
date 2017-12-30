@@ -28,7 +28,7 @@ class Config:
         self.tokens = [Token(key, Address(value)) for key, value in data['tokens'].items()]
         self.base_address = Address(data['base']['address'])
         self.base_description = data['base']['description']
-        self.members = map(lambda item: Member(item), data['members'])
+        self.members = [Member(item) for item in data['members']]
 
     def __repr__(self):
         return pformat(vars(self))

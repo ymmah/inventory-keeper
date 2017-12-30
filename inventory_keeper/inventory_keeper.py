@@ -16,22 +16,25 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import argparse
+import datetime
 import json
 import logging
 import sys
 
+import pytz
 from texttable import Texttable
 from web3 import Web3, HTTPProvider
 
-from inventory_keeper.config import Config
-from inventory_keeper.type import EthereumAccount, OasisMarketMakerKeeper
+from inventory_keeper.config import Config, Member
+from inventory_keeper.type import EthereumAccount, OasisMarketMakerKeeper, RadarRelayMarketMakerKeeper
 from pymaker import Address
 from pymaker.lifecycle import Web3Lifecycle
+from pymaker.numeric import Wad
 from pymaker.oasis import MatchingMarket
 
 
 class InventoryKeeper:
-    """Keeper acting as an inventory manager for market maker keeper on other bots."""
+    """Keeper acting as an inventory manager for market maker keeper or other bots."""
 
     logger = logging.getLogger('inventory-keeper')
 
@@ -81,18 +84,25 @@ class InventoryKeeper:
         self.otc = MatchingMarket(web3=self.web3, address=Address(self.arguments.oasis_address))
         self.config = Config(json.load(open(self.arguments.config)))
 
+        self.first_inventory_dump = True
+
         logging.basicConfig(format='%(asctime)-15s %(levelname)-8s %(message)s',
                             level=(logging.DEBUG if self.arguments.debug else logging.INFO))
 
-        self.clear_screen()
-        self.print_inventory()
-
     def main(self):
         with Web3Lifecycle(self.web3) as lifecycle:
-            lifecycle.every(self.arguments.inventory_dump_interval, self.dump_inventory)
+            if self.arguments.inventory_dump_file:
+                lifecycle.every(self.arguments.inventory_dump_interval, self.dump_inventory)
 
-    def clear_screen(self):
-        print("\033[H\033[J")
+    def get_type(self, member: Member):
+        assert(isinstance(member, Member))
+
+        if member.type == 'oasis-market-maker-keeper':
+            return OasisMarketMakerKeeper(web3=self.web3, otc=self.otc, address=member.address)
+        elif member.type == 'radarrelay-market-maker-keeper':
+            return RadarRelayMarketMakerKeeper(web3=self.web3, address=member.address)
+        else:
+            raise Exception(f"Unknown member type: '{member.type}'")
 
     def add_first_column(self, table, description, address):
         result = []
@@ -131,8 +141,8 @@ class InventoryKeeper:
     def print_inventory(self):
         longest_token_name = max(map(lambda token: len(token.name), self.config.tokens))
 
-        def format_amount(amount, token_name):
-            return str(amount) + " " + token_name.ljust(longest_token_name, ".")
+        def format_amount(amount: Wad, token: str):
+            return str(amount) + " " + token.ljust(longest_token_name, ".")
 
         base_type = EthereumAccount(web3=self.web3, address=self.config.base_address)
         base_data = map(lambda token: [format_amount(base_type.balance(token.address), token.name)], self.config.tokens)
@@ -141,7 +151,7 @@ class InventoryKeeper:
         members_data = []
         for member in self.config.members:
             table = []
-            member_type = OasisMarketMakerKeeper(web3=self.web3, otc=self.otc, address=member.address)
+            member_type = self.get_type(member)
             for member_token in member.tokens:
                 token_name = member_token.token_name
                 token_address = next(filter(lambda token: token.name == token_name, self.config.tokens)).address
@@ -154,13 +164,21 @@ class InventoryKeeper:
             members_data = members_data + self.add_first_column(table, member.description, member.address)
             members_data.append(["","","",""])
 
-        return self.print_base_table(base_data) \
-               + "\n\n" \
-               + self.print_members_table(members_data) \
-               + "\n\n"
+        return self.print_base_table(base_data) + "\n\n" + \
+               self.print_members_table(members_data) + "\n\n" + \
+               "Generated at: " + datetime.datetime.now(tz=pytz.UTC).strftime('%Y.%m.%d %H:%M:%S %Z')
 
     def dump_inventory(self):
+        # The first time we write the inventory dump to a file we log a message
+        # so the user knows where to look for that file.
+        if self.first_inventory_dump:
+            self.logger.info(f"Will regularly write current inventory dump to '{self.arguments.inventory_dump_file}'")
+            self.logger.info(f"Use 'watch cat {self.arguments.inventory_dump_file}' to monitor that file")
+            self.first_inventory_dump = False
+
         inventory = self.print_inventory()
+        with open(self.arguments.inventory_dump_file, 'w') as file:
+            file.write(inventory)
 
 
 if __name__ == '__main__':
