@@ -51,7 +51,7 @@ class Member:
         assert(isinstance(data, dict))
 
         self.type = data['type']
-        self.address = Address(data['address'])
+        self.address = Address(data['address']) if 'address' in data else None
         self.description = data['description']
         self.tokens = [MemberToken(key, value) for key, value in data['tokens'].items()]
 

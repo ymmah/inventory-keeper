@@ -27,8 +27,9 @@ from web3 import Web3, HTTPProvider
 
 from inventory_keeper.config import Config, Member
 from inventory_keeper.type import EthereumAccount, OasisMarketMakerKeeper, RadarRelayMarketMakerKeeper, \
-    EtherDeltaMarketMakerKeeper
+    EtherDeltaMarketMakerKeeper, BiboxMarketMakerKeeper
 from pymaker import Address
+from pymaker.bibox import BiboxApi
 from pymaker.etherdelta import EtherDelta
 from pymaker.lifecycle import Web3Lifecycle
 from pymaker.numeric import Wad
@@ -54,6 +55,15 @@ class InventoryKeeper:
 
         parser.add_argument("--etherdelta-address", type=str, required=True,
                             help="Ethereum address of the EtherDelta contract")
+
+        parser.add_argument("--bibox-api-server", type=str, default="https://api.bibox.com",
+                            help="Address of the Bibox API server (default: 'https://api.bibox.com')")
+
+        parser.add_argument("--bibox-api-key", type=str, required=True,
+                            help="API key for the Bibox API")
+
+        parser.add_argument("--bibox-secret", type=str, required=True,
+                            help="Secret for the Bibox API")
 
         parser.add_argument("--config", type=str, required=True,
                             help="Inventory configuration file")
@@ -88,6 +98,10 @@ class InventoryKeeper:
         self.web3 = kwargs['web3'] if 'web3' in kwargs else Web3(HTTPProvider(endpoint_uri=f"http://{self.arguments.rpc_host}:{self.arguments.rpc_port}"))
         self.otc = MatchingMarket(web3=self.web3, address=Address(self.arguments.oasis_address))
         self.etherdelta = EtherDelta(web3=self.web3, address=Address(self.arguments.etherdelta_address))
+        self.bibox_api = BiboxApi(api_server=self.arguments.bibox_api_server,
+                                  api_key=self.arguments.bibox_api_key,
+                                  secret=self.arguments.bibox_secret)
+
         self.config = Config(json.load(open(self.arguments.config)))
 
         self.first_inventory_dump = True
@@ -109,6 +123,8 @@ class InventoryKeeper:
             return EtherDeltaMarketMakerKeeper(web3=self.web3, etherdelta=self.etherdelta, address=member.address)
         elif member.type == 'radarrelay-market-maker-keeper':
             return RadarRelayMarketMakerKeeper(web3=self.web3, address=member.address)
+        elif member.type == 'bibox-market-maker-keeper':
+            return BiboxMarketMakerKeeper(web3=self.web3, bibox_api=self.bibox_api)
         else:
             raise Exception(f"Unknown member type: '{member.type}'")
 
@@ -149,11 +165,11 @@ class InventoryKeeper:
     def print_inventory(self):
         longest_token_name = max(map(lambda token: len(token.name), self.config.tokens))
 
-        def format_amount(amount: Wad, token: str):
-            return str(amount) + " " + token.ljust(longest_token_name, ".")
+        def format_amount(amount: Wad, token_name: str):
+            return str(amount) + " " + token_name.ljust(longest_token_name, ".")
 
         base_type = EthereumAccount(web3=self.web3, address=self.config.base_address)
-        base_data = map(lambda token: [format_amount(base_type.balance(token.address), token.name)], self.config.tokens)
+        base_data = map(lambda token: [format_amount(base_type.balance(token.name, token.address), token.name)], self.config.tokens)
         base_data = self.add_first_column(base_data, self.config.base_description, self.config.base_address)
 
         members_data = []
@@ -161,12 +177,11 @@ class InventoryKeeper:
             table = []
             member_type = self.get_type(member)
             for member_token in member.tokens:
-                token_name = member_token.token_name
-                token_address = next(filter(lambda token: token.name == token_name, self.config.tokens)).address
+                token = next(filter(lambda token: token.name == member_token.token_name, self.config.tokens))
                 table.append([
-                    format_amount(member_type.balance(token_address), token_name),
-                    format_amount(member_token.min_amount, token_name) if member_token.min_amount else "",
-                    format_amount(member_token.max_amount, token_name) if member_token.max_amount else ""
+                    format_amount(member_type.balance(token.name, token.address), token.name),
+                    format_amount(member_token.min_amount, token.name) if member_token.min_amount else "",
+                    format_amount(member_token.max_amount, token.name) if member_token.max_amount else ""
                 ])
 
             members_data = members_data + self.add_first_column(table, member.description, member.address)

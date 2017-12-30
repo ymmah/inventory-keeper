@@ -18,6 +18,7 @@
 from web3 import Web3
 
 from pymaker import Address
+from pymaker.bibox import BiboxApi
 from pymaker.etherdelta import EtherDelta
 from pymaker.numeric import Wad
 from pymaker.oasis import MatchingMarket
@@ -32,13 +33,14 @@ class EthereumAccount:
         self.web3 = web3
         self.address = address
 
-    def balance(self, token: Address) -> Wad:
-        assert(isinstance(token, Address))
+    def balance(self, token_name: str, token_address: Address) -> Wad:
+        assert(isinstance(token_name, str))
+        assert(isinstance(token_address, Address))
 
-        if token == RAW_ETH:
+        if token_address == RAW_ETH:
             return eth_balance(self.web3, self.address)
         else:
-            return ERC20Token(web3=self.web3, address=token).balance_of(self.address)
+            return ERC20Token(web3=self.web3, address=token_address).balance_of(self.address)
 
 
 class OasisMarketMakerKeeper:
@@ -61,17 +63,21 @@ class OasisMarketMakerKeeper:
 
         return balance_in_our_sell_orders + balance_in_account
 
-    def balance(self, token: Address) -> Wad:
-        assert(isinstance(token, Address))
+    def balance(self, token_name: str, token_address: Address) -> Wad:
+        assert(isinstance(token_name, str))
+        assert(isinstance(token_address, Address))
 
-        if token == RAW_ETH:
+        if token_address == RAW_ETH:
             return eth_balance(self.web3, self.address)
         else:
             while True:
-                balance_1 = self._oasis_balance(token)
-                balance_2 = self._oasis_balance(token)
+                balance_1 = self._oasis_balance(token_address)
+                balance_2 = self._oasis_balance(token_address)
                 if balance_1 == balance_2:
                     return balance_1
+
+    def can_deposit(self):
+        return False
 
     def deposit(self, base: Address, token: Address, amount: Wad) -> bool:
         assert(isinstance(base, Address))
@@ -83,6 +89,9 @@ class OasisMarketMakerKeeper:
         return ERC20Token(web3=self.web3, address=token).transfer(self.address, amount) \
             .transact({'from': base}) \
             .successful
+
+    def can_withdraw(self):
+        return False
 
     def withdraw(self, base: Address, token: Address, amount: Wad) -> bool:
         assert(isinstance(base, Address))
@@ -102,13 +111,41 @@ class EtherDeltaMarketMakerKeeper:
         self.etherdelta = etherdelta
         self.address = address
 
-    def balance(self, token: Address) -> Wad:
-        assert(isinstance(token, Address))
+    def balance(self, token_name: str, token_address: Address) -> Wad:
+        assert(isinstance(token_name, str))
+        assert(isinstance(token_address, Address))
 
-        if token == RAW_ETH:
+        if token_address == RAW_ETH:
             return eth_balance(self.web3, self.address) + self.etherdelta.balance_of(self.address)
         else:
-            return ERC20Token(self.web3, token).balance_of(self.address) + self.etherdelta.balance_of_token(token, self.address)
+            return ERC20Token(self.web3, token_address).balance_of(self.address) \
+                   + self.etherdelta.balance_of_token(token_address, self.address)
+
+    def can_deposit(self):
+        return False
+
+
+class BiboxMarketMakerKeeper:
+    def __init__(self, web3: Web3, bibox_api: BiboxApi):
+        assert(isinstance(web3, Web3))
+        assert(isinstance(bibox_api, BiboxApi))
+
+        self.web3 = web3
+        self.bibox_api = bibox_api
+
+    def balance(self, token_name: str, token_address: Address) -> Wad:
+        assert(isinstance(token_name, str))
+        assert(isinstance(token_address, Address))
+
+        all_balances = self.bibox_api.coin_list()
+        token_balance = next(filter(lambda coin: coin['symbol'] == token_name, all_balances))
+        return token_balance['totalBalance']
+
+    def can_deposit(self):
+        return False
+
+    def can_withdraw(self):
+        return False
 
 
 class RadarRelayMarketMakerKeeper(EthereumAccount):
