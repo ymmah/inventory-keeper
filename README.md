@@ -1,6 +1,6 @@
 # inventory-keeper
 
-TODO
+**WORK IN PROGRESS**
 
 
 ## License
