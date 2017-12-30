@@ -139,7 +139,7 @@ class BiboxMarketMakerKeeper:
 
         all_balances = self.bibox_api.coin_list()
         token_balance = next(filter(lambda coin: coin['symbol'] == token_name, all_balances))
-        return token_balance['totalBalance']
+        return Wad.from_number(token_balance['totalBalance'])
 
     def can_deposit(self):
         return False

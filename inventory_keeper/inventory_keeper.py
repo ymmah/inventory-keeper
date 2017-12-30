@@ -145,7 +145,7 @@ class InventoryKeeper:
         table.set_deco(Texttable.HEADER)
         table.set_cols_dtype(['t', 't'])
         table.set_cols_align(['l', 'r'])
-        table.set_cols_width([60, 35])
+        table.set_cols_width([30, 35])
         table.add_rows([["Base account", "Balance"]] + table_data)
         return table.draw()
 
@@ -156,7 +156,7 @@ class InventoryKeeper:
         table.set_deco(Texttable.HEADER)
         table.set_cols_dtype(['t', 't', 't', 't'])
         table.set_cols_align(['l', 'r', 'r', 'r'])
-        table.set_cols_width([60, 35, 37, 33])
+        table.set_cols_width([30, 35, 37, 33])
         table.add_rows([["Member accounts", "Balance", "Min", "Max"]] + table_data)
         return table.draw()
 
