@@ -21,6 +21,7 @@ import json
 import logging
 import sys
 
+import os
 import pytz
 from texttable import Texttable
 from web3 import Web3, HTTPProvider
@@ -49,21 +50,6 @@ class InventoryKeeper:
 
         parser.add_argument("--rpc-port", type=int, default=8545,
                             help="JSON-RPC port (default: `8545')")
-
-        parser.add_argument("--oasis-address", type=str, required=True,
-                            help="Ethereum address of the OasisDEX contract")
-
-        parser.add_argument("--etherdelta-address", type=str, required=True,
-                            help="Ethereum address of the EtherDelta contract")
-
-        parser.add_argument("--bibox-api-server", type=str, default="https://api.bibox.com",
-                            help="Address of the Bibox API server (default: 'https://api.bibox.com')")
-
-        parser.add_argument("--bibox-api-key", type=str, required=True,
-                            help="API key for the Bibox API")
-
-        parser.add_argument("--bibox-secret", type=str, required=True,
-                            help="Secret for the Bibox API")
 
         parser.add_argument("--config", type=str, required=True,
                             help="Inventory configuration file")
@@ -96,11 +82,6 @@ class InventoryKeeper:
         self.arguments = parser.parse_args(args)
 
         self.web3 = kwargs['web3'] if 'web3' in kwargs else Web3(HTTPProvider(endpoint_uri=f"http://{self.arguments.rpc_host}:{self.arguments.rpc_port}"))
-        self.otc = MatchingMarket(web3=self.web3, address=Address(self.arguments.oasis_address))
-        self.etherdelta = EtherDelta(web3=self.web3, address=Address(self.arguments.etherdelta_address))
-        self.bibox_api = BiboxApi(api_server=self.arguments.bibox_api_server,
-                                  api_key=self.arguments.bibox_api_key,
-                                  secret=self.arguments.bibox_secret)
 
         self.config = Config(json.load(open(self.arguments.config)))
 
@@ -118,15 +99,35 @@ class InventoryKeeper:
         assert(isinstance(member, Member))
 
         if member.type == 'oasis-market-maker-keeper':
-            return OasisMarketMakerKeeper(web3=self.web3, otc=self.otc, address=member.address)
+            oasis_address = Address(member.config['oasisAddress'])
+            market_maker_address = Address(member.config['marketMakerAddress'])
+
+            return OasisMarketMakerKeeper(web3=self.web3,
+                                          otc=MatchingMarket(web3=self.web3, address=oasis_address),
+                                          address=market_maker_address)
         elif member.type == 'etherdelta-market-maker-keeper':
-            return EtherDeltaMarketMakerKeeper(web3=self.web3, etherdelta=self.etherdelta, address=member.address)
+            etherdelta_address = Address(member.config['etherDeltaAddress'])
+            market_maker_address = Address(member.config['marketMakerAddress'])
+
+            return EtherDeltaMarketMakerKeeper(web3=self.web3,
+                                               etherdelta=EtherDelta(web3=self.web3, address=etherdelta_address),
+                                               address=market_maker_address)
         elif member.type == 'radarrelay-market-maker-keeper':
-            return RadarRelayMarketMakerKeeper(web3=self.web3, address=member.address)
+            market_maker_address = Address(member.config['marketMakerAddress'])
+            return RadarRelayMarketMakerKeeper(web3=self.web3, address=market_maker_address)
         elif member.type == 'bibox-market-maker-keeper':
-            return BiboxMarketMakerKeeper(web3=self.web3, bibox_api=self.bibox_api)
+            bibox_api = BiboxApi(api_server="https://api.bibox.com",
+                                 api_key=self.environ(member.config['apiKey']),
+                                 secret=self.environ(member.config['secret']))
+            return BiboxMarketMakerKeeper(web3=self.web3, bibox_api=bibox_api)
         else:
             raise Exception(f"Unknown member type: '{member.type}'")
+
+    def environ(self, value: str):
+        if value.startswith('$'):
+            return os.environ[value[1:]]
+        else:
+            return value
 
     def add_first_column(self, table, name: str):
         result = []

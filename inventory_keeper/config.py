@@ -52,7 +52,7 @@ class Member:
 
         self.name = data['name']
         self.type = data['type']
-        self.address = Address(data['address']) if 'address' in data else None
+        self.config = data['config']
         self.tokens = [MemberToken(key, value) for key, value in data['tokens'].items()]
 
     def __repr__(self):
