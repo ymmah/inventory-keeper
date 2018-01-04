@@ -54,7 +54,7 @@ class OasisMarketMakerKeeper:
 
         # In order to calculate Oasis market maker keeper balance, we have add the balance
         # locked in keeper's open orders...
-        our_orders = filter(lambda order: order.maker == self.address, self.otc.get_orders())
+        our_orders = self.otc.get_orders_by_maker(self.address)
         our_sell_orders = filter(lambda order: order.pay_token == token, our_orders)
         balance_in_our_sell_orders = sum(map(lambda order: order.pay_amount, our_sell_orders), Wad(0))
 
