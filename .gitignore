@@ -6,6 +6,3 @@ __pycache__
 .coverage
 
 .DS_Store
-
-config*.json
-target*.txt
