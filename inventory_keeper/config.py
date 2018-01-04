@@ -90,7 +90,8 @@ class Member:
         elif self.type == 'bibox-market-maker-keeper':
             bibox_api = BiboxApi(api_server="https://api.bibox.com",
                                  api_key=self._environ(self.config['apiKey']),
-                                 secret=self._environ(self.config['secret']))
+                                 secret=self._environ(self.config['secret']),
+                                 timeout=9.5)
             self._type_object = BiboxMarketMakerKeeper(web3=web3, bibox_api=bibox_api)
         else:
             raise Exception(f"Unknown member type: '{self.type}'")
