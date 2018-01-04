@@ -26,15 +26,10 @@ import pytz
 from texttable import Texttable
 from web3 import Web3, HTTPProvider
 
-from inventory_keeper.config import Config, Member
-from inventory_keeper.type import EthereumAccount, OasisMarketMakerKeeper, RadarRelayMarketMakerKeeper, \
-    EtherDeltaMarketMakerKeeper, BiboxMarketMakerKeeper
-from pymaker import Address
-from pymaker.bibox import BiboxApi
-from pymaker.etherdelta import EtherDelta
+from inventory_keeper.config import Config
+from inventory_keeper.type import EthereumAccount
 from pymaker.lifecycle import Web3Lifecycle
 from pymaker.numeric import Wad
-from pymaker.oasis import MatchingMarket
 
 
 class InventoryKeeper:
@@ -95,40 +90,6 @@ class InventoryKeeper:
             if self.arguments.inventory_dump_file:
                 lifecycle.every(self.arguments.inventory_dump_interval, self.dump_inventory)
 
-    def get_type(self, member: Member):
-        assert(isinstance(member, Member))
-
-        if member.type == 'oasis-market-maker-keeper':
-            oasis_address = Address(member.config['oasisAddress'])
-            market_maker_address = Address(member.config['marketMakerAddress'])
-
-            return OasisMarketMakerKeeper(web3=self.web3,
-                                          otc=MatchingMarket(web3=self.web3, address=oasis_address),
-                                          address=market_maker_address)
-        elif member.type == 'etherdelta-market-maker-keeper':
-            etherdelta_address = Address(member.config['etherDeltaAddress'])
-            market_maker_address = Address(member.config['marketMakerAddress'])
-
-            return EtherDeltaMarketMakerKeeper(web3=self.web3,
-                                               etherdelta=EtherDelta(web3=self.web3, address=etherdelta_address),
-                                               address=market_maker_address)
-        elif member.type == 'radarrelay-market-maker-keeper':
-            market_maker_address = Address(member.config['marketMakerAddress'])
-            return RadarRelayMarketMakerKeeper(web3=self.web3, address=market_maker_address)
-        elif member.type == 'bibox-market-maker-keeper':
-            bibox_api = BiboxApi(api_server="https://api.bibox.com",
-                                 api_key=self.environ(member.config['apiKey']),
-                                 secret=self.environ(member.config['secret']))
-            return BiboxMarketMakerKeeper(web3=self.web3, bibox_api=bibox_api)
-        else:
-            raise Exception(f"Unknown member type: '{member.type}'")
-
-    def environ(self, value: str):
-        if value.startswith('$'):
-            return os.environ[value[1:]]
-        else:
-            return value
-
     def add_first_column(self, table, name: str):
         result = []
         for index, row in enumerate(table):
@@ -174,11 +135,11 @@ class InventoryKeeper:
         members_data = []
         for member in self.config.members:
             table = []
-            member_type = self.get_type(member)
+            member_implementation = member.implementation(self.web3)
             for member_token in member.tokens:
                 token = next(filter(lambda token: token.name == member_token.token_name, self.config.tokens))
                 table.append([
-                    format_amount(member_type.balance(token.name, token.address), token.name),
+                    format_amount(member_implementation.balance(token.name, token.address), token.name),
                     format_amount(member_token.min_amount, token.name) if member_token.min_amount else "",
                     format_amount(member_token.max_amount, token.name) if member_token.max_amount else ""
                 ])

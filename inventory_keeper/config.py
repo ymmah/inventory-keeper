@@ -17,8 +17,16 @@
 
 from pprint import pformat
 
+import os
+from web3 import Web3
+
+from inventory_keeper.type import OasisMarketMakerKeeper, RadarRelayMarketMakerKeeper, BiboxMarketMakerKeeper, \
+    EtherDeltaMarketMakerKeeper
 from pymaker import Address
+from pymaker.bibox import BiboxApi
+from pymaker.etherdelta import EtherDelta
 from pymaker.numeric import Wad
+from pymaker.oasis import MatchingMarket
 
 
 class Config:
@@ -54,6 +62,47 @@ class Member:
         self.type = data['type']
         self.config = data['config']
         self.tokens = [MemberToken(key, value) for key, value in data['tokens'].items()]
+        self._type_object = None
+
+    def implementation(self, web3: Web3):
+        assert(isinstance(web3, Web3))
+
+        if self._type_object is not None:
+            return self._type_object
+
+        if self.type == 'oasis-market-maker-keeper':
+            oasis_address = Address(self.config['oasisAddress'])
+            market_maker_address = Address(self.config['marketMakerAddress'])
+
+            self._type_object = OasisMarketMakerKeeper(web3=web3,
+                                                      otc=MatchingMarket(web3=web3, address=oasis_address),
+                                                      address=market_maker_address)
+        elif self.type == 'etherdelta-market-maker-keeper':
+            etherdelta_address = Address(self.config['etherDeltaAddress'])
+            market_maker_address = Address(self.config['marketMakerAddress'])
+
+            self._type_object = EtherDeltaMarketMakerKeeper(web3=web3,
+                                               etherdelta=EtherDelta(web3=web3, address=etherdelta_address),
+                                               address=market_maker_address)
+        elif self.type == 'radarrelay-market-maker-keeper':
+            market_maker_address = Address(self.config['marketMakerAddress'])
+            self._type_object = RadarRelayMarketMakerKeeper(web3=web3, address=market_maker_address)
+        elif self.type == 'bibox-market-maker-keeper':
+            bibox_api = BiboxApi(api_server="https://api.bibox.com",
+                                 api_key=self._environ(self.config['apiKey']),
+                                 secret=self._environ(self.config['secret']))
+            self._type_object = BiboxMarketMakerKeeper(web3=web3, bibox_api=bibox_api)
+        else:
+            raise Exception(f"Unknown member type: '{self.type}'")
+
+        return self._type_object
+
+    @staticmethod
+    def _environ(value: str):
+        if value.startswith('$'):
+            return os.environ[value[1:]]
+        else:
+            return value
 
     def __repr__(self):
         return pformat(vars(self))
