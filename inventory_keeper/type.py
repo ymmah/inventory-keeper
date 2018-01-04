@@ -28,6 +28,14 @@ from pymaker.util import eth_balance
 RAW_ETH = Address('0x0000000000000000000000000000000000000000')
 
 
+def consistent_read(func):
+    while True:
+        balance_1 = func()
+        balance_2 = func()
+        if balance_1 == balance_2:
+            return balance_1
+
+
 class EthereumAccount:
     def __init__(self, web3: Web3, address: Address):
         self.web3 = web3
@@ -70,11 +78,7 @@ class OasisMarketMakerKeeper:
         if token_address == RAW_ETH:
             return eth_balance(self.web3, self.address)
         else:
-            while True:
-                balance_1 = self._oasis_balance(token_address)
-                balance_2 = self._oasis_balance(token_address)
-                if balance_1 == balance_2:
-                    return balance_1
+            return consistent_read(lambda: self._oasis_balance(token_address))
 
     def can_deposit(self):
         return False
