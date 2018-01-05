@@ -27,7 +27,7 @@ from texttable import Texttable
 from web3 import Web3, HTTPProvider
 
 from inventory_keeper.config import Config
-from inventory_keeper.type import EthereumAccount
+from inventory_keeper.type import EthereumAccount, BaseAccount
 from pymaker.lifecycle import Web3Lifecycle
 from pymaker.numeric import Wad
 
@@ -167,40 +167,53 @@ class InventoryKeeper:
         self.logger.debug(f"Written current inventory dump to '{self.arguments.inventory_dump_file}'")
 
     def rebalance_members(self):
-        base_implementation = EthereumAccount(web3=self.web3, address=self.config.base_address)
+        base = BaseAccount(web3=self.web3,
+                           address=self.config.base_address,
+                           min_eth_balance=self.config.base_min_eth_balance)
 
-        members_data = []
         for member in self.config.members:
             member_implementation = member.implementation(self.web3)
             for member_token in member.tokens:
                 token = next(filter(lambda token: token.name == member_token.token_name, self.config.tokens))
                 current_balance = member_implementation.balance(token.name, token.address)
 
+                # deposit if balance too low
                 if member_token.min_amount is not None and member_token.avg_amount is not None:
                     if current_balance < member_token.min_amount:
                         self.logger.info(f"Member '{member.name}' has {token.name} balance {current_balance}"
-                                         f" below minimum ({member_token.min_amount}).")
+                                         f" {token.name} below minimum ({member_token.min_amount} {token.name}).")
 
-                        if member_implementation.can_deposit():
-                            pass
-                        else:
-                            self.logger.info(f"Member '{member.name}' has {token.name} balance {current_balance}"
-                                             f" below minimum ({member_token.min_amount}).")
+                        try:
+                            result = member_implementation.deposit(base=base,
+                                                                   token_name=token.name,
+                                                                   token_address=token.address,
+                                                                   amount=member_token.avg_amount-current_balance)
 
+                            if result:
+                                self.logger.info(f"Successfully deposited {token.name} to '{member.name}'")
+                            else:
+                                self.logger.warning(f"Failed to deposit {token.name} to '{member.name}'")
+                        except Exception as e:
+                            self.logger.warning(f"Failed to deposit {token.name} to '{member.name}': {e}")
 
+                # withdraw if balance too high
+                if member_token.max_amount is not None and member_token.avg_amount is not None:
+                    if current_balance > member_token.max_amount:
+                        self.logger.info(f"Member '{member.name}' has {token.name} balance {current_balance}"
+                                         f" {token.name} above maximum ({member_token.max_amount} {token.name}).")
 
-                token = next(filter(lambda token: token.name == member_token.token_name, self.config.tokens))
-                table.append([
-                    format_amount(, token.name),
-                    format_amount(member_token.min_amount, token.name) if member_token.min_amount else "",
-                    format_amount(member_token.max_amount, token.name) if member_token.max_amount else ""
-                ])
+                        try:
+                            result = member_implementation.withdraw(base=base,
+                                                                   token_name=token.name,
+                                                                   token_address=token.address,
+                                                                   amount=current_balance-member_token.avg_amount)
 
-            members_data = members_data + self.add_first_column(table, member.name)
-            members_data.append(["","","",""])
-
-
-        pass
+                            if result:
+                                self.logger.info(f"Successfully withdrawn excess {token.name} from '{member.name}'")
+                            else:
+                                self.logger.warning(f"Failed to withdraw excess {token.name} from '{member.name}'")
+                        except Exception as e:
+                            self.logger.warning(f"Failed to withdraw excess {token.name} from '{member.name}': {e}")
 
 
 if __name__ == '__main__':

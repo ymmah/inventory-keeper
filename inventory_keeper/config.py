@@ -36,6 +36,7 @@ class Config:
         self.tokens = [Token(key, Address(value)) for key, value in data['tokens'].items()]
         self.base_name = data['base']['name']
         self.base_address = Address(data['base']['address'])
+        self.base_min_eth_balance = Wad.from_number(data['base']['minEthBalance'])
         self.members = [Member(item) for item in data['members']]
 
     def __repr__(self):

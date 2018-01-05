@@ -52,7 +52,11 @@ class EthereumAccount:
 
 
 class BaseAccount(EthereumAccount):
-    pass
+    def __init__(self, web3: Web3, address: Address, min_eth_balance: Wad):
+        assert(isinstance(min_eth_balance, Wad))
+
+        super(BaseAccount, self).__init__(web3, address)
+        self.min_eth_balance = min_eth_balance
 
 
 class OasisMarketMakerKeeper:
