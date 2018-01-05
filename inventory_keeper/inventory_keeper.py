@@ -66,6 +66,9 @@ class InventoryKeeper:
         parser.add_argument("--gas-price-file", type=str,
                             help="Gas price configuration file")
 
+        parser.add_argument("--manage-inventory", dest='manage_inventory', action='store_true',
+                            help="If specified, the keeper will actively manage inventory according to the config")
+
         parser.add_argument("--inventory-dump-file", type=str,
                             help="File the keeper will periodically write the inventory dump to")
 
@@ -88,7 +91,8 @@ class InventoryKeeper:
 
     def main(self):
         with Web3Lifecycle(self.web3) as lifecycle:
-            lifecycle.every(60, self.rebalance_members)
+            if self.arguments.manage_inventory:
+                lifecycle.every(60, self.rebalance_members)
             if self.arguments.inventory_dump_file:
                 lifecycle.every(self.arguments.inventory_dump_interval, self.dump_inventory)
 
