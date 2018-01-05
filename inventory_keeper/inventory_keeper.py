@@ -87,6 +87,7 @@ class InventoryKeeper:
 
     def main(self):
         with Web3Lifecycle(self.web3) as lifecycle:
+            lifecycle.every(60, self.rebalance_members)
             if self.arguments.inventory_dump_file:
                 lifecycle.every(self.arguments.inventory_dump_interval, self.dump_inventory)
 
@@ -164,6 +165,42 @@ class InventoryKeeper:
             file.write(inventory)
 
         self.logger.debug(f"Written current inventory dump to '{self.arguments.inventory_dump_file}'")
+
+    def rebalance_members(self):
+        base_implementation = EthereumAccount(web3=self.web3, address=self.config.base_address)
+
+        members_data = []
+        for member in self.config.members:
+            member_implementation = member.implementation(self.web3)
+            for member_token in member.tokens:
+                token = next(filter(lambda token: token.name == member_token.token_name, self.config.tokens))
+                current_balance = member_implementation.balance(token.name, token.address)
+
+                if member_token.min_amount is not None and member_token.avg_amount is not None:
+                    if current_balance < member_token.min_amount:
+                        self.logger.info(f"Member '{member.name}' has {token.name} balance {current_balance}"
+                                         f" below minimum ({member_token.min_amount}).")
+
+                        if member_implementation.can_deposit():
+                            pass
+                        else:
+                            self.logger.info(f"Member '{member.name}' has {token.name} balance {current_balance}"
+                                             f" below minimum ({member_token.min_amount}).")
+
+
+
+                token = next(filter(lambda token: token.name == member_token.token_name, self.config.tokens))
+                table.append([
+                    format_amount(, token.name),
+                    format_amount(member_token.min_amount, token.name) if member_token.min_amount else "",
+                    format_amount(member_token.max_amount, token.name) if member_token.max_amount else ""
+                ])
+
+            members_data = members_data + self.add_first_column(table, member.name)
+            members_data.append(["","","",""])
+
+
+        pass
 
 
 if __name__ == '__main__':

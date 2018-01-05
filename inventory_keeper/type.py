@@ -51,6 +51,10 @@ class EthereumAccount:
             return ERC20Token(web3=self.web3, address=token_address).balance_of(self.address)
 
 
+class BaseAccount(EthereumAccount):
+    pass
+
+
 class OasisMarketMakerKeeper:
     def __init__(self, web3: Web3, otc: MatchingMarket, address: Address):
         self.web3 = web3
@@ -80,31 +84,31 @@ class OasisMarketMakerKeeper:
         else:
             return consistent_read(lambda: self._oasis_balance(token_address))
 
-    def can_deposit(self):
-        return False
-
-    def deposit(self, base: Address, token: Address, amount: Wad) -> bool:
-        assert(isinstance(base, Address))
-        assert(isinstance(token, Address))
+    def deposit(self, base: BaseAccount, token_name: str, token_address: Address, amount: Wad) -> bool:
+        assert(isinstance(base, BaseAccount))
+        assert(isinstance(token_name, str))
+        assert(isinstance(token_address, Address))
         assert(isinstance(amount, Wad))
 
-        # TODO exception for RAW_ETH
+        if token_address == RAW_ETH:
+            print(self.web3.eth.sendTransaction({'from': base.address, 'to': self.address, 'value': amount.value}))
+        else:
+            raise Exception(f"Deposit of {token_name} to OasisDEX not supported")
+            #TODO COMPLETE IT
+            return ERC20Token(web3=self.web3, address=token_address).transfer(self.address, amount) \
+                .transact({'from': base}) \
+                .successful
 
-        return ERC20Token(web3=self.web3, address=token).transfer(self.address, amount) \
-            .transact({'from': base}) \
-            .successful
-
-    def can_withdraw(self):
-        return False
-
-    def withdraw(self, base: Address, token: Address, amount: Wad) -> bool:
-        assert(isinstance(base, Address))
-        assert(isinstance(token, Address))
+    def withdraw(self, base: BaseAccount, token_name: str, token_address: Address, amount: Wad) -> bool:
+        assert(isinstance(base, BaseAccount))
+        assert(isinstance(token_name, str))
+        assert(isinstance(token_address, Address))
         assert(isinstance(amount, Wad))
 
-        # TODO exception for RAW_ETH
+        raise Exception(f"Withdrawals from OasisDEX not supported")
 
-        return ERC20Token(web3=self.web3, address=token).transfer(base, amount) \
+        # TODO exception for RAW_ETH
+        return ERC20Token(web3=self.web3, address=token_address).transfer(base, amount) \
             .transact({'from': self.address}) \
             .successful
 
@@ -125,8 +129,24 @@ class EtherDeltaMarketMakerKeeper:
             return ERC20Token(self.web3, token_address).balance_of(self.address) \
                    + self.etherdelta.balance_of_token(token_address, self.address)
 
-    def can_deposit(self):
-        return False
+    def deposit(self, base: BaseAccount, token_name: str, token_address: Address, amount: Wad) -> bool:
+        assert(isinstance(base, BaseAccount))
+        assert(isinstance(token_name, str))
+        assert(isinstance(token_address, Address))
+        assert(isinstance(amount, Wad))
+
+        if token_address == RAW_ETH:
+            print(self.web3.eth.sendTransaction({'from': base.address, 'to': self.address, 'value': amount.value}))
+        else:
+            raise Exception(f"Deposit of {token_name} to EtherDelta not supported")
+
+    def withdraw(self, base: BaseAccount, token_name: str, token_address: Address, amount: Wad) -> bool:
+        assert(isinstance(base, BaseAccount))
+        assert(isinstance(token_name, str))
+        assert(isinstance(token_address, Address))
+        assert(isinstance(amount, Wad))
+
+        raise Exception(f"Withdrawals from OasisDEX not supported")
 
 
 class BiboxMarketMakerKeeper:
@@ -145,13 +165,39 @@ class BiboxMarketMakerKeeper:
         token_balance = next(filter(lambda coin: coin['symbol'] == token_name, all_balances))
         return Wad.from_number(token_balance['totalBalance'])
 
-    def can_deposit(self):
-        return False
+    def deposit(self, base: BaseAccount, token_name: str, token_address: Address, amount: Wad) -> bool:
+        assert(isinstance(base, BaseAccount))
+        assert(isinstance(token_name, str))
+        assert(isinstance(token_address, Address))
+        assert(isinstance(amount, Wad))
 
-    def can_withdraw(self):
-        return False
+        raise Exception(f"Deposits to Bibox not supported")
+
+    def withdraw(self, base: BaseAccount, token_name: str, token_address: Address, amount: Wad) -> bool:
+        assert(isinstance(base, BaseAccount))
+        assert(isinstance(token_name, str))
+        assert(isinstance(token_address, Address))
+        assert(isinstance(amount, Wad))
+
+        raise Exception(f"Withdrawals from Bibox not supported")
 
 
 class RadarRelayMarketMakerKeeper(EthereumAccount):
-    pass
+    def deposit(self, base: BaseAccount, token_name: str, token_address: Address, amount: Wad) -> bool:
+        assert(isinstance(base, BaseAccount))
+        assert(isinstance(token_name, str))
+        assert(isinstance(token_address, Address))
+        assert(isinstance(amount, Wad))
 
+        if token_address == RAW_ETH:
+            print(self.web3.eth.sendTransaction({'from': base.address, 'to': self.address, 'value': amount.value}))
+        else:
+            raise Exception(f"Deposit of {token_name} to RadarRelay not supported")
+
+    def withdraw(self, base: BaseAccount, token_name: str, token_address: Address, amount: Wad) -> bool:
+        assert(isinstance(base, BaseAccount))
+        assert(isinstance(token_name, str))
+        assert(isinstance(token_address, Address))
+        assert(isinstance(amount, Wad))
+
+        raise Exception(f"Withdrawals from RadarRelay not supported")
