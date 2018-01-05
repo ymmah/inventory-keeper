@@ -28,9 +28,6 @@ class ReloadableConfig:
     on each call to `get_config()`. In addition to that, whenever the config file changes,
     a log event is emitted.
 
-    This reader uses _jsonnet_ data templating language, so the JSON config files can use
-    some advanced expressions documented here: <https://github.com/google/jsonnet>.
-
     Attributes:
         filename: Filename of the configuration file.
     """
@@ -51,11 +48,10 @@ class ReloadableConfig:
         """
         with open(self.filename) as data_file:
             content_file = data_file.read()
-            content_config = _jsonnet.evaluate_snippet("snippet", content_file, ext_vars={})
-            result = json.loads(content_config)
+            result = json.loads(content_file)
 
             # Report if file has been newly loaded or reloaded
-            checksum = zlib.crc32(content_config.encode('utf-8'))
+            checksum = zlib.crc32(content_file.encode('utf-8'))
             if self._checksum is None:
                 self.logger.info(f"Loaded configuration from '{self.filename}'")
                 self.logger.debug(f"Config file is: " + json.dumps(result, indent=4))

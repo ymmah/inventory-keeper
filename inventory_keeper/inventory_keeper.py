@@ -27,6 +27,7 @@ from texttable import Texttable
 from web3 import Web3, HTTPProvider
 
 from inventory_keeper.config import Config
+from inventory_keeper.reloadable_config import ReloadableConfig
 from inventory_keeper.type import EthereumAccount, BaseAccount
 from pymaker.lifecycle import Web3Lifecycle
 from pymaker.numeric import Wad
@@ -77,10 +78,10 @@ class InventoryKeeper:
         self.arguments = parser.parse_args(args)
 
         self.web3 = kwargs['web3'] if 'web3' in kwargs else Web3(HTTPProvider(endpoint_uri=f"http://{self.arguments.rpc_host}:{self.arguments.rpc_port}"))
-
-        self.config = Config(json.load(open(self.arguments.config)))
-
-        self.first_inventory_dump = True
+        self.reloadable_config = ReloadableConfig(self.arguments.config)
+        self._first_inventory_dump = True
+        self._last_config_dict = None
+        self._last_config = None
 
         logging.basicConfig(format='%(asctime)-15s %(levelname)-8s %(message)s',
                             level=(logging.DEBUG if self.arguments.debug else logging.INFO))
@@ -90,6 +91,14 @@ class InventoryKeeper:
             lifecycle.every(60, self.rebalance_members)
             if self.arguments.inventory_dump_file:
                 lifecycle.every(self.arguments.inventory_dump_interval, self.dump_inventory)
+
+    def get_config(self):
+        current_config = self.reloadable_config.get_config()
+        if current_config != self._last_config_dict:
+            self._last_config = Config(current_config)
+            self._last_config_dict = current_config
+
+        return self._last_config
 
     def add_first_column(self, table, name: str):
         result = []
@@ -124,21 +133,23 @@ class InventoryKeeper:
         return table.draw()
 
     def print_inventory(self):
-        longest_token_name = max(map(lambda token: len(token.name), self.config.tokens))
+        config = self.get_config()
+
+        longest_token_name = max(map(lambda token: len(token.name), config.tokens))
 
         def format_amount(amount: Wad, token_name: str):
             return str(amount) + " " + token_name.ljust(longest_token_name, ".")
 
-        base_type = EthereumAccount(web3=self.web3, address=self.config.base_address)
-        base_data = map(lambda token: [format_amount(base_type.balance(token.name, token.address), token.name)], self.config.tokens)
-        base_data = self.add_first_column(base_data, self.config.base_name)
+        base_type = EthereumAccount(web3=self.web3, address=config.base_address)
+        base_data = map(lambda token: [format_amount(base_type.balance(token.name, token.address), token.name)], config.tokens)
+        base_data = self.add_first_column(base_data, config.base_name)
 
         members_data = []
-        for member in self.config.members:
+        for member in config.members:
             table = []
             member_implementation = member.implementation(self.web3)
             for member_token in member.tokens:
-                token = next(filter(lambda token: token.name == member_token.token_name, self.config.tokens))
+                token = next(filter(lambda token: token.name == member_token.token_name, config.tokens))
                 table.append([
                     format_amount(member_implementation.balance(token.name, token.address), token.name),
                     format_amount(member_token.min_amount, token.name) if member_token.min_amount else "",
@@ -155,10 +166,10 @@ class InventoryKeeper:
     def dump_inventory(self):
         # The first time we write the inventory dump to a file we log a message
         # so the user knows where to look for that file.
-        if self.first_inventory_dump:
+        if self._first_inventory_dump:
             self.logger.info(f"Will regularly write current inventory dump to '{self.arguments.inventory_dump_file}'")
             self.logger.info(f"Use 'watch cat {self.arguments.inventory_dump_file}' to monitor that file")
-            self.first_inventory_dump = False
+            self._first_inventory_dump = False
 
         inventory = self.print_inventory()
         with open(self.arguments.inventory_dump_file, 'w') as file:
@@ -167,14 +178,15 @@ class InventoryKeeper:
         self.logger.debug(f"Written current inventory dump to '{self.arguments.inventory_dump_file}'")
 
     def rebalance_members(self):
+        config = self.get_config()
         base = BaseAccount(web3=self.web3,
-                           address=self.config.base_address,
-                           min_eth_balance=self.config.base_min_eth_balance)
+                           address=config.base_address,
+                           min_eth_balance=config.base_min_eth_balance)
 
-        for member in self.config.members:
+        for member in config.members:
             member_implementation = member.implementation(self.web3)
             for member_token in member.tokens:
-                token = next(filter(lambda token: token.name == member_token.token_name, self.config.tokens))
+                token = next(filter(lambda token: token.name == member_token.token_name, config.tokens))
                 current_balance = member_implementation.balance(token.name, token.address)
 
                 # deposit if balance too low
