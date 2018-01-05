@@ -17,20 +17,20 @@
 
 import argparse
 import datetime
-import json
 import logging
 import sys
 
-import os
 import pytz
 from texttable import Texttable
 from web3 import Web3, HTTPProvider
 
 from inventory_keeper.config import Config
 from inventory_keeper.reloadable_config import ReloadableConfig
-from inventory_keeper.type import EthereumAccount, BaseAccount
+from inventory_keeper.type import BaseAccount
+from pymaker.approval import directly
 from pymaker.lifecycle import Web3Lifecycle
 from pymaker.numeric import Wad
+from pymaker.token import ERC20Token
 
 
 class InventoryKeeper:
@@ -91,6 +91,7 @@ class InventoryKeeper:
 
     def main(self):
         with Web3Lifecycle(self.web3) as lifecycle:
+            lifecycle.on_startup(self.approve)
             if self.arguments.manage_inventory:
                 lifecycle.every(60, self.rebalance_members)
             if self.arguments.inventory_dump_file:
@@ -103,6 +104,26 @@ class InventoryKeeper:
             self._last_config_dict = current_config
 
         return self._last_config
+
+    def approve(self):
+        config = self.get_config()
+        base = BaseAccount(web3=self.web3, address=config.base_address, min_eth_balance=config.base_min_eth_balance)
+
+        for member in config.members:
+            member_implementation = member.implementation(self.web3)
+            if not hasattr(member_implementation, 'address'):
+                continue
+
+            for member_token in member.tokens:
+                token = next(filter(lambda token: token.name == member_token.token_name, config.tokens))
+                if token.name == "ETH":
+                    continue
+
+                self.web3.eth.defaultAccount = member_implementation.address.address
+                erc20token = ERC20Token(web3=self.web3, address=token.address)
+                directly()(erc20token, base.address, config.base_name)
+
+        self.web3.eth.defaultAccount = None
 
     def add_first_column(self, table, name: str):
         result = []
@@ -138,14 +159,14 @@ class InventoryKeeper:
 
     def print_inventory(self):
         config = self.get_config()
+        base = BaseAccount(web3=self.web3, address=config.base_address, min_eth_balance=config.base_min_eth_balance)
 
         longest_token_name = max(map(lambda token: len(token.name), config.tokens))
 
         def format_amount(amount: Wad, token_name: str):
             return str(amount) + " " + token_name.ljust(longest_token_name, ".")
 
-        base_type = EthereumAccount(web3=self.web3, address=config.base_address)
-        base_data = map(lambda token: [format_amount(base_type.balance(token.name, token.address), token.name)], config.tokens)
+        base_data = map(lambda token: [format_amount(base.balance(token.name, token.address), token.name)], config.tokens)
         base_data = self.add_first_column(base_data, config.base_name)
 
         members_data = []
@@ -183,9 +204,7 @@ class InventoryKeeper:
 
     def rebalance_members(self):
         config = self.get_config()
-        base = BaseAccount(web3=self.web3,
-                           address=config.base_address,
-                           min_eth_balance=config.base_min_eth_balance)
+        base = BaseAccount(web3=self.web3, address=config.base_address, min_eth_balance=config.base_min_eth_balance)
 
         for member in config.members:
             member_implementation = member.implementation(self.web3)

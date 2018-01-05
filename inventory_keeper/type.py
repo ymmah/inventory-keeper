@@ -121,7 +121,12 @@ class OasisMarketMakerKeeper:
         assert(isinstance(token_address, Address))
         assert(isinstance(amount, Wad))
 
-        raise Exception(f"Withdrawals from OasisDEX not supported")
+        if token_address == RAW_ETH:
+            raise Exception(f"ETH withdrawals from OasisDEX are not supported")
+        else:
+            return ERC20Token(web3=self.web3, address=token_address).transfer_from(self.address, base.address, amount) \
+                .transact(from_address=base.address) \
+                .successful
 
 
 class EtherDeltaMarketMakerKeeper:
@@ -173,7 +178,7 @@ class EtherDeltaMarketMakerKeeper:
         assert(isinstance(token_address, Address))
         assert(isinstance(amount, Wad))
 
-        raise Exception(f"Withdrawals from OasisDEX not supported")
+        raise Exception(f"Withdrawals from EtherDelta not supported")
 
 
 class RadarRelayMarketMakerKeeper(EthereumAccount):
@@ -210,7 +215,12 @@ class RadarRelayMarketMakerKeeper(EthereumAccount):
         assert(isinstance(token_address, Address))
         assert(isinstance(amount, Wad))
 
-        raise Exception(f"Withdrawals from RadarRelay not supported")
+        if token_address == RAW_ETH:
+            raise Exception(f"ETH withdrawals from RadarRelay are not supported")
+        else:
+            return ERC20Token(web3=self.web3, address=token_address).transfer_from(self.address, base.address, amount) \
+                .transact(from_address=base.address) \
+                .successful
 
 
 class BiboxMarketMakerKeeper:
