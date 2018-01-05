@@ -17,7 +17,7 @@
 
 from web3 import Web3
 
-from pymaker import Address
+from pymaker import Address, eth_transfer
 from pymaker.bibox import BiboxApi
 from pymaker.etherdelta import EtherDelta
 from pymaker.numeric import Wad
@@ -95,19 +95,25 @@ class OasisMarketMakerKeeper:
         assert(isinstance(amount, Wad))
 
         if token_address == RAW_ETH:
-            max_transfer = base.balance(token_name, token_address) - base.min_eth_balance
+            max_amount = base.balance(token_name, token_address) - base.min_eth_balance
+            final_amount = min(amount, max_amount)
 
-            print(self.web3.eth.sendTransaction({'from': base.address.address,
-                                                 'to': self.address.address,
-                                                 'value': min(amount, max_transfer).value}))
-
-            return True
+            if final_amount > Wad(0):
+                return eth_transfer(web3=self.web3, to=self.address, amount=final_amount) \
+                    .transact(from_address=base.address) \
+                    .successful
+            else:
+                raise Exception("No ETH left in the base account")
         else:
-            max_transfer = base.balance(token_name, token_address)
+            max_amount = base.balance(token_name, token_address)
+            final_amount = min(amount, max_amount)
 
-            return ERC20Token(web3=self.web3, address=token_address).transfer(self.address, min(amount, max_transfer)) \
-                .transact(from_address=base.address) \
-                .successful
+            if final_amount > Wad(0):
+                return ERC20Token(web3=self.web3, address=token_address).transfer(self.address, final_amount) \
+                    .transact(from_address=base.address) \
+                    .successful
+            else:
+                raise Exception(f"No {token_name} left in the base account")
 
     def withdraw(self, base: BaseAccount, token_name: str, token_address: Address, amount: Wad) -> bool:
         assert(isinstance(base, BaseAccount))
@@ -141,19 +147,25 @@ class EtherDeltaMarketMakerKeeper:
         assert(isinstance(amount, Wad))
 
         if token_address == RAW_ETH:
-            max_transfer = base.balance(token_name, token_address)-base.min_eth_balance
+            max_amount = base.balance(token_name, token_address) - base.min_eth_balance
+            final_amount = min(amount, max_amount)
 
-            print(self.web3.eth.sendTransaction({'from': base.address.address,
-                                                 'to': self.address.address,
-                                                 'value': min(amount, max_transfer).value}))
-
-            return True
+            if final_amount > Wad(0):
+                return eth_transfer(web3=self.web3, to=self.address, amount=final_amount) \
+                    .transact(from_address=base.address) \
+                    .successful
+            else:
+                raise Exception("No ETH left in the base account")
         else:
-            max_transfer = base.balance(token_name, token_address)
+            max_amount = base.balance(token_name, token_address)
+            final_amount = min(amount, max_amount)
 
-            return ERC20Token(web3=self.web3, address=token_address).transfer(self.address, min(amount, max_transfer)) \
-                .transact(from_address=base.address) \
-                .successful
+            if final_amount > Wad(0):
+                return ERC20Token(web3=self.web3, address=token_address).transfer(self.address, final_amount) \
+                    .transact(from_address=base.address) \
+                    .successful
+            else:
+                raise Exception(f"No {token_name} left in the base account")
 
     def withdraw(self, base: BaseAccount, token_name: str, token_address: Address, amount: Wad) -> bool:
         assert(isinstance(base, BaseAccount))
@@ -172,19 +184,25 @@ class RadarRelayMarketMakerKeeper(EthereumAccount):
         assert(isinstance(amount, Wad))
 
         if token_address == RAW_ETH:
-            max_transfer = base.balance(token_name, token_address) - base.min_eth_balance
+            max_amount = base.balance(token_name, token_address) - base.min_eth_balance
+            final_amount = min(amount, max_amount)
 
-            print(self.web3.eth.sendTransaction({'from': base.address.address,
-                                                 'to': self.address.address,
-                                                 'value': min(amount, max_transfer).value}))
-
-            return True
+            if final_amount > Wad(0):
+                return eth_transfer(web3=self.web3, to=self.address, amount=final_amount) \
+                    .transact(from_address=base.address) \
+                    .successful
+            else:
+                raise Exception("No ETH left in the base account")
         else:
-            max_transfer = base.balance(token_name, token_address)
+            max_amount = base.balance(token_name, token_address)
+            final_amount = min(amount, max_amount)
 
-            return ERC20Token(web3=self.web3, address=token_address).transfer(self.address, min(amount, max_transfer)) \
-                .transact(from_address=base.address) \
-                .successful
+            if final_amount > Wad(0):
+                return ERC20Token(web3=self.web3, address=token_address).transfer(self.address, final_amount) \
+                    .transact(from_address=base.address) \
+                    .successful
+            else:
+                raise Exception(f"No {token_name} left in the base account")
 
     def withdraw(self, base: BaseAccount, token_name: str, token_address: Address, amount: Wad) -> bool:
         assert(isinstance(base, BaseAccount))
