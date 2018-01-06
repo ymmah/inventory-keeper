@@ -14,7 +14,7 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+import threading
 from pprint import pformat
 
 import os
@@ -27,6 +27,24 @@ from pymaker.bibox import BiboxApi
 from pymaker.etherdelta import EtherDelta
 from pymaker.numeric import Wad
 from pymaker.oasis import MatchingMarket
+
+
+class OasisCache:
+    def __init__(self, web3: Web3):
+        assert(isinstance(web3, Web3))
+
+        self.web3 = web3
+        self._cache = {}
+        self._lock = threading.Lock()
+
+    def get_otc(self, oasis_address: Address):
+        assert(isinstance(oasis_address, Address))
+
+        with self._lock:
+            if oasis_address not in self._cache:
+                self._cache[oasis_address] = MatchingMarket(web3=self.web3, address=oasis_address)
+
+        return self._cache[oasis_address]
 
 
 class Config:
@@ -65,8 +83,9 @@ class Member:
         self.tokens = [MemberToken(key, value) for key, value in data['tokens'].items()]
         self._type_object = None
 
-    def implementation(self, web3: Web3):
+    def implementation(self, web3: Web3, oasis_cache: OasisCache):
         assert(isinstance(web3, Web3))
+        assert(isinstance(oasis_cache, OasisCache))
 
         if self._type_object is not None:
             return self._type_object
@@ -76,7 +95,7 @@ class Member:
             market_maker_address = Address(self.config['marketMakerAddress'])
 
             self._type_object = OasisMarketMakerKeeper(web3=web3,
-                                                      otc=MatchingMarket(web3=web3, address=oasis_address),
+                                                      otc=oasis_cache.get_otc(oasis_address),
                                                       address=market_maker_address)
         elif self.type == 'etherdelta-market-maker-keeper':
             etherdelta_address = Address(self.config['etherDeltaAddress'])

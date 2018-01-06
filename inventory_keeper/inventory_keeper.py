@@ -24,7 +24,7 @@ import pytz
 from texttable import Texttable
 from web3 import Web3, HTTPProvider
 
-from inventory_keeper.config import Config
+from inventory_keeper.config import Config, OasisCache
 from inventory_keeper.reloadable_config import ReloadableConfig
 from inventory_keeper.type import BaseAccount
 from pymaker.approval import directly
@@ -81,6 +81,7 @@ class InventoryKeeper:
         self.arguments = parser.parse_args(args)
 
         self.web3 = kwargs['web3'] if 'web3' in kwargs else Web3(HTTPProvider(endpoint_uri=f"http://{self.arguments.rpc_host}:{self.arguments.rpc_port}"))
+        self.oasis_cache = OasisCache(self.web3)
         self.reloadable_config = ReloadableConfig(self.arguments.config)
         self._first_inventory_dump = True
         self._last_config_dict = None
@@ -110,7 +111,7 @@ class InventoryKeeper:
         base = BaseAccount(web3=self.web3, address=config.base_address, min_eth_balance=config.base_min_eth_balance)
 
         for member in config.members:
-            member_implementation = member.implementation(self.web3)
+            member_implementation = member.implementation(self.web3, self.oasis_cache)
             if not hasattr(member_implementation, 'address'):
                 continue
 
@@ -187,7 +188,7 @@ class InventoryKeeper:
         members_data = []
         for member in config.members:
             table = []
-            member_implementation = member.implementation(self.web3)
+            member_implementation = member.implementation(self.web3, self.oasis_cache)
             for member_token in member.tokens:
                 token = next(filter(lambda token: token.name == member_token.token_name, config.tokens))
                 balance = member_implementation.balance(token.name, token.address)
@@ -229,7 +230,7 @@ class InventoryKeeper:
         base = BaseAccount(web3=self.web3, address=config.base_address, min_eth_balance=config.base_min_eth_balance)
 
         for member in config.members:
-            member_implementation = member.implementation(self.web3)
+            member_implementation = member.implementation(self.web3, self.oasis_cache)
             for member_token in member.tokens:
                 token = next(filter(lambda token: token.name == member_token.token_name, config.tokens))
                 current_balance = member_implementation.balance(token.name, token.address)
