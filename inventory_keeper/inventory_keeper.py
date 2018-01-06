@@ -157,6 +157,17 @@ class InventoryKeeper:
         table.add_rows([["Member accounts", "Balance", "Min", "Max"]] + table_data)
         return table.draw()
 
+    def print_totals_table(self, table_data: list):
+        assert(isinstance(table_data, list))
+
+        table = Texttable(max_width=250)
+        table.set_deco(Texttable.HEADER)
+        table.set_cols_dtype(['t'])
+        table.set_cols_align(['r'])
+        table.set_cols_width([35])
+        table.add_rows([["Total balance"]] + table_data)
+        return table.draw()
+
     def print_inventory(self):
         config = self.get_config()
         base = BaseAccount(web3=self.web3, address=config.base_address, min_eth_balance=config.base_min_eth_balance)
@@ -169,23 +180,34 @@ class InventoryKeeper:
         base_data = map(lambda token: [format_amount(base.balance(token.name, token.address), token.name)], config.tokens)
         base_data = self.add_first_column(base_data, config.base_name)
 
+        total_balances = {}
+        for token in config.tokens:
+            total_balances[token.name] = base.balance(token.name, token.address)
+
         members_data = []
         for member in config.members:
             table = []
             member_implementation = member.implementation(self.web3)
             for member_token in member.tokens:
                 token = next(filter(lambda token: token.name == member_token.token_name, config.tokens))
+                balance = member_implementation.balance(token.name, token.address)
+
                 table.append([
-                    format_amount(member_implementation.balance(token.name, token.address), token.name),
+                    format_amount(balance, token.name),
                     format_amount(member_token.min_amount, token.name) if member_token.min_amount else "",
                     format_amount(member_token.max_amount, token.name) if member_token.max_amount else ""
                 ])
 
+                total_balances[token.name] = total_balances[token.name] + balance
+
             members_data = members_data + self.add_first_column(table, member.name)
             members_data.append(["","","",""])
 
+        totals_data = list(map(lambda token: [format_amount(total_balances[token.name] if token.name in total_balances else Wad(0), token.name)], config.tokens))
+
         return self.print_base_table(base_data) + "\n\n" + \
                self.print_members_table(members_data) + "\n\n" + \
+               self.print_totals_table(totals_data) + "\n\n" + \
                "Generated at: " + datetime.datetime.now(tz=pytz.UTC).strftime('%Y.%m.%d %H:%M:%S %Z')
 
     def dump_inventory(self):
