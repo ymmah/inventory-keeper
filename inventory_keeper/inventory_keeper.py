@@ -191,15 +191,19 @@ class InventoryKeeper:
             member_implementation = member.implementation(self.web3, self.oasis_cache)
             for member_token in member.tokens:
                 token = next(filter(lambda token: token.name == member_token.token_name, config.tokens))
-                balance = member_implementation.balance(token.name, token.address)
+                try:
+                    balance = member_implementation.balance(token.name, token.address)
+                except:
+                    balance = None
 
                 table.append([
-                    format_amount(balance, token.name),
+                    format_amount(balance, token.name) if balance is not None else '?',
                     format_amount(member_token.min_amount, token.name) if member_token.min_amount else "",
                     format_amount(member_token.max_amount, token.name) if member_token.max_amount else ""
                 ])
 
-                total_balances[token.name] = total_balances[token.name] + balance
+                if balance is not None:
+                    total_balances[token.name] = total_balances[token.name] + balance
 
             members_data = members_data + self.add_first_column(table, member.name)
             members_data.append(["","","",""])
@@ -233,7 +237,11 @@ class InventoryKeeper:
             member_implementation = member.implementation(self.web3, self.oasis_cache)
             for member_token in member.tokens:
                 token = next(filter(lambda token: token.name == member_token.token_name, config.tokens))
-                current_balance = member_implementation.balance(token.name, token.address)
+                try:
+                    current_balance = member_implementation.balance(token.name, token.address)
+                except Exception as e:
+                    self.logger.warning(f"Failed to read balance of {member.name}: {e}")
+                    continue
 
                 # deposit if balance too low
                 if member_token.min_amount is not None and member_token.avg_amount is not None:
