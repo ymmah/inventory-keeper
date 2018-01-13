@@ -14,7 +14,9 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import logging
 
+from retry import retry
 from web3 import Web3
 
 from pymaker import Address, eth_transfer
@@ -231,6 +233,7 @@ class BiboxMarketMakerKeeper:
         self.web3 = web3
         self.bibox_api = bibox_api
 
+    @retry(tries=5, logger=logging.getLogger())
     def balance(self, token_name: str, token_address: Address) -> Wad:
         assert(isinstance(token_name, str))
         assert(isinstance(token_address, Address))
