@@ -69,10 +69,13 @@ class InventoryKeeper:
         parser.add_argument("--manage-inventory", dest='manage_inventory', action='store_true',
                             help="If specified, the keeper will actively manage inventory according to the config")
 
+        parser.add_argument("--manage-inventory-frequency", type=int, default=60,
+                            help="Frequency of actively managing the inventory (in seconds, default: 60)")
+
         parser.add_argument("--inventory-dump-file", type=str,
                             help="File the keeper will periodically write the inventory dump to")
 
-        parser.add_argument("--inventory-dump-interval", type=int, default=30,
+        parser.add_argument("--inventory-dump-frequency", type=int, default=30,
                             help="Frequency of writing the inventory dump file (in seconds, default: 30)")
 
         parser.add_argument("--debug", dest='debug', action='store_true',
@@ -94,7 +97,7 @@ class InventoryKeeper:
         with Web3Lifecycle(self.web3) as lifecycle:
             lifecycle.on_startup(self.approve)
             if self.arguments.manage_inventory:
-                lifecycle.every(60, self.rebalance_members)
+                lifecycle.every(self.arguments.manage_inventory_frequency, self.rebalance_members)
             if self.arguments.inventory_dump_file:
                 lifecycle.every(self.arguments.inventory_dump_interval, self.dump_inventory)
 
