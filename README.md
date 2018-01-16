@@ -160,9 +160,10 @@ usage: inventory-keeper [-h] [--rpc-host RPC_HOST] [--rpc-port RPC_PORT]
                         [--gas-price-increase GAS_PRICE_INCREASE]
                         [--gas-price-increase-every GAS_PRICE_INCREASE_EVERY]
                         [--gas-price-max GAS_PRICE_MAX]
-                        [--gas-price-file GAS_PRICE_FILE]
+                        [--gas-price-file GAS_PRICE_FILE] [--manage-inventory]
+                        [--manage-inventory-frequency MANAGE_INVENTORY_FREQUENCY]
                         [--inventory-dump-file INVENTORY_DUMP_FILE]
-                        [--inventory-dump-interval INVENTORY_DUMP_INTERVAL]
+                        [--inventory-dump-frequency INVENTORY_DUMP_FREQUENCY]
                         [--debug]
 
 optional arguments:
@@ -182,10 +183,15 @@ optional arguments:
                         Maximum gas price (in Wei)
   --gas-price-file GAS_PRICE_FILE
                         Gas price configuration file
+  --manage-inventory    If specified, the keeper will actively manage
+                        inventory according to the config
+  --manage-inventory-frequency MANAGE_INVENTORY_FREQUENCY
+                        Frequency of actively managing the inventory (in
+                        seconds, default: 60)
   --inventory-dump-file INVENTORY_DUMP_FILE
                         File the keeper will periodically write the inventory
                         dump to
-  --inventory-dump-interval INVENTORY_DUMP_INTERVAL
+  --inventory-dump-frequency INVENTORY_DUMP_FREQUENCY
                         Frequency of writing the inventory dump file (in
                         seconds, default: 30)
   --debug               Enable debug output
