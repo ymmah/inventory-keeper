@@ -28,7 +28,7 @@ from inventory_keeper.config import Config, OasisCache
 from inventory_keeper.reloadable_config import ReloadableConfig
 from inventory_keeper.type import BaseAccount
 from pymaker.approval import directly
-from pymaker.lifecycle import Web3Lifecycle
+from pymaker.lifecycle import Lifecycle
 from pymaker.numeric import Wad
 from pymaker.token import ERC20Token
 
@@ -94,7 +94,7 @@ class InventoryKeeper:
                             level=(logging.DEBUG if self.arguments.debug else logging.INFO))
 
     def main(self):
-        with Web3Lifecycle(self.web3) as lifecycle:
+        with Lifecycle(self.web3) as lifecycle:
             lifecycle.on_startup(self.approve)
             if self.arguments.manage_inventory:
                 lifecycle.every(self.arguments.manage_inventory_frequency, self.rebalance_members)

@@ -20,8 +20,8 @@ import logging
 from retry import retry
 from web3 import Web3
 
+from pyexchange.bibox import BiboxApi
 from pymaker import Address, eth_transfer
-from pymaker.bibox import BiboxApi
 from pymaker.etherdelta import EtherDelta
 from pymaker.numeric import Wad
 from pymaker.oasis import MatchingMarket

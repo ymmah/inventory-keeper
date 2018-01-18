@@ -14,6 +14,7 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import threading
 from pprint import pformat
 
@@ -22,8 +23,8 @@ from web3 import Web3
 
 from inventory_keeper.type import OasisMarketMakerKeeper, RadarRelayMarketMakerKeeper, BiboxMarketMakerKeeper, \
     EtherDeltaMarketMakerKeeper
+from pyexchange.bibox import BiboxApi
 from pymaker import Address
-from pymaker.bibox import BiboxApi
 from pymaker.etherdelta import EtherDelta
 from pymaker.numeric import Wad
 from pymaker.oasis import MatchingMarket
