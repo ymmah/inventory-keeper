@@ -99,7 +99,7 @@ class InventoryKeeper:
             if self.arguments.manage_inventory:
                 lifecycle.every(self.arguments.manage_inventory_frequency, self.rebalance_members)
             if self.arguments.inventory_dump_file:
-                lifecycle.every(self.arguments.inventory_dump_interval, self.dump_inventory)
+                lifecycle.every(self.arguments.inventory_dump_frequency, self.dump_inventory)
 
     def get_config(self):
         current_config = self.reloadable_config.get_config()
