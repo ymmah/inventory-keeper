@@ -21,6 +21,7 @@ from retry import retry
 from web3 import Web3
 
 from pyexchange.bibox import BiboxApi
+from pyexchange.okex import OKEXApi
 from pymaker import Address, eth_transfer
 from pymaker.etherdelta import EtherDelta
 from pymaker.numeric import Wad
@@ -258,3 +259,35 @@ class BiboxMarketMakerKeeper:
         assert(isinstance(amount, Wad))
 
         raise Exception(f"Withdrawals from Bibox not supported")
+
+
+class OkexMarketMakerKeeper:
+    def __init__(self, web3: Web3, okex_api: OKEXApi):
+        assert(isinstance(web3, Web3))
+        assert(isinstance(okex_api, OKEXApi))
+
+        self.web3 = web3
+        self.okex_api = okex_api
+
+    def balance(self, token_name: str, token_address: Address) -> Wad:
+        assert(isinstance(token_name, str))
+        assert(isinstance(token_address, Address))
+
+        return Wad.from_number(self.okex_api.get_balances()['free'][token_name.lower()]) + \
+               Wad.from_number(self.okex_api.get_balances()['freezed'][token_name.lower()])
+
+    def deposit(self, base: BaseAccount, token_name: str, token_address: Address, amount: Wad) -> bool:
+        assert(isinstance(base, BaseAccount))
+        assert(isinstance(token_name, str))
+        assert(isinstance(token_address, Address))
+        assert(isinstance(amount, Wad))
+
+        raise Exception(f"Deposits to OKEX not supported")
+
+    def withdraw(self, base: BaseAccount, token_name: str, token_address: Address, amount: Wad) -> bool:
+        assert(isinstance(base, BaseAccount))
+        assert(isinstance(token_name, str))
+        assert(isinstance(token_address, Address))
+        assert(isinstance(amount, Wad))
+
+        raise Exception(f"Withdrawals from OKEX not supported")
