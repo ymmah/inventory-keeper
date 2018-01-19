@@ -237,7 +237,7 @@ class BiboxMarketMakerKeeper:
         self.web3 = web3
         self.bibox_api = bibox_api
 
-    @retry(tries=5, logger=logging.getLogger())
+    @retry(tries=5, delay=0.5, backoff=1.5, logger=logging.getLogger())
     def balance(self, token_name: str, token_address: Address) -> Wad:
         assert(isinstance(token_name, str))
         assert(isinstance(token_address, Address) or (token_address is None))
@@ -271,7 +271,7 @@ class OkexMarketMakerKeeper:
         self.web3 = web3
         self.okex_api = okex_api
 
-    @retry(tries=5, logger=logging.getLogger())
+    @retry(tries=5, delay=0.5, backoff=1.5, logger=logging.getLogger())
     def balance(self, token_name: str, token_address: Address) -> Wad:
         assert(isinstance(token_name, str))
         assert(isinstance(token_address, Address) or (token_address is None))
