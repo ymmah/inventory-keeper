@@ -47,9 +47,11 @@ class EthereumAccount:
 
     def balance(self, token_name: str, token_address: Address) -> Wad:
         assert(isinstance(token_name, str))
-        assert(isinstance(token_address, Address))
+        assert(isinstance(token_address, Address) or (token_address is None))
 
-        if token_address == RAW_ETH:
+        if token_address is None:
+            return Wad(0)
+        elif token_address == RAW_ETH:
             return eth_balance(self.web3, self.address)
         else:
             return ERC20Token(web3=self.web3, address=token_address).balance_of(self.address)
@@ -85,7 +87,7 @@ class OasisMarketMakerKeeper:
 
     def balance(self, token_name: str, token_address: Address) -> Wad:
         assert(isinstance(token_name, str))
-        assert(isinstance(token_address, Address))
+        assert(isinstance(token_address, Address) or (token_address is None))
 
         if token_address == RAW_ETH:
             return eth_balance(self.web3, self.address)
@@ -95,7 +97,7 @@ class OasisMarketMakerKeeper:
     def deposit(self, base: BaseAccount, token_name: str, token_address: Address, amount: Wad) -> bool:
         assert(isinstance(base, BaseAccount))
         assert(isinstance(token_name, str))
-        assert(isinstance(token_address, Address))
+        assert(isinstance(token_address, Address) or (token_address is None))
         assert(isinstance(amount, Wad))
 
         if token_address == RAW_ETH:
@@ -122,7 +124,7 @@ class OasisMarketMakerKeeper:
     def withdraw(self, base: BaseAccount, token_name: str, token_address: Address, amount: Wad) -> bool:
         assert(isinstance(base, BaseAccount))
         assert(isinstance(token_name, str))
-        assert(isinstance(token_address, Address))
+        assert(isinstance(token_address, Address) or (token_address is None))
         assert(isinstance(amount, Wad))
 
         if token_address == RAW_ETH:
@@ -141,7 +143,7 @@ class EtherDeltaMarketMakerKeeper:
 
     def balance(self, token_name: str, token_address: Address) -> Wad:
         assert(isinstance(token_name, str))
-        assert(isinstance(token_address, Address))
+        assert(isinstance(token_address, Address) or (token_address is None))
 
         if token_address == RAW_ETH:
             return eth_balance(self.web3, self.address) + self.etherdelta.balance_of(self.address)
@@ -152,7 +154,7 @@ class EtherDeltaMarketMakerKeeper:
     def deposit(self, base: BaseAccount, token_name: str, token_address: Address, amount: Wad) -> bool:
         assert(isinstance(base, BaseAccount))
         assert(isinstance(token_name, str))
-        assert(isinstance(token_address, Address))
+        assert(isinstance(token_address, Address) or (token_address is None))
         assert(isinstance(amount, Wad))
 
         if token_address == RAW_ETH:
@@ -179,7 +181,7 @@ class EtherDeltaMarketMakerKeeper:
     def withdraw(self, base: BaseAccount, token_name: str, token_address: Address, amount: Wad) -> bool:
         assert(isinstance(base, BaseAccount))
         assert(isinstance(token_name, str))
-        assert(isinstance(token_address, Address))
+        assert(isinstance(token_address, Address) or (token_address is None))
         assert(isinstance(amount, Wad))
 
         raise Exception(f"Withdrawals from EtherDelta not supported")
@@ -189,7 +191,7 @@ class RadarRelayMarketMakerKeeper(EthereumAccount):
     def deposit(self, base: BaseAccount, token_name: str, token_address: Address, amount: Wad) -> bool:
         assert(isinstance(base, BaseAccount))
         assert(isinstance(token_name, str))
-        assert(isinstance(token_address, Address))
+        assert(isinstance(token_address, Address) or (token_address is None))
         assert(isinstance(amount, Wad))
 
         if token_address == RAW_ETH:
@@ -216,7 +218,7 @@ class RadarRelayMarketMakerKeeper(EthereumAccount):
     def withdraw(self, base: BaseAccount, token_name: str, token_address: Address, amount: Wad) -> bool:
         assert(isinstance(base, BaseAccount))
         assert(isinstance(token_name, str))
-        assert(isinstance(token_address, Address))
+        assert(isinstance(token_address, Address) or (token_address is None))
         assert(isinstance(amount, Wad))
 
         if token_address == RAW_ETH:
@@ -238,7 +240,7 @@ class BiboxMarketMakerKeeper:
     @retry(tries=5, logger=logging.getLogger())
     def balance(self, token_name: str, token_address: Address) -> Wad:
         assert(isinstance(token_name, str))
-        assert(isinstance(token_address, Address))
+        assert(isinstance(token_address, Address) or (token_address is None))
 
         all_balances = self.bibox_api.coin_list(retry=True)
         token_balance = next(filter(lambda coin: coin['symbol'] == token_name, all_balances))
@@ -247,7 +249,7 @@ class BiboxMarketMakerKeeper:
     def deposit(self, base: BaseAccount, token_name: str, token_address: Address, amount: Wad) -> bool:
         assert(isinstance(base, BaseAccount))
         assert(isinstance(token_name, str))
-        assert(isinstance(token_address, Address))
+        assert(isinstance(token_address, Address) or (token_address is None))
         assert(isinstance(amount, Wad))
 
         raise Exception(f"Deposits to Bibox not supported")
@@ -255,7 +257,7 @@ class BiboxMarketMakerKeeper:
     def withdraw(self, base: BaseAccount, token_name: str, token_address: Address, amount: Wad) -> bool:
         assert(isinstance(base, BaseAccount))
         assert(isinstance(token_name, str))
-        assert(isinstance(token_address, Address))
+        assert(isinstance(token_address, Address) or (token_address is None))
         assert(isinstance(amount, Wad))
 
         raise Exception(f"Withdrawals from Bibox not supported")
@@ -271,15 +273,17 @@ class OkexMarketMakerKeeper:
 
     def balance(self, token_name: str, token_address: Address) -> Wad:
         assert(isinstance(token_name, str))
-        assert(isinstance(token_address, Address))
+        assert(isinstance(token_address, Address) or (token_address is None))
 
-        return Wad.from_number(self.okex_api.get_balances()['free'][token_name.lower()]) + \
-               Wad.from_number(self.okex_api.get_balances()['freezed'][token_name.lower()])
+        balances = self.okex_api.get_balances()
+
+        return Wad.from_number(balances['free'][token_name.lower()]) + \
+               Wad.from_number(balances['freezed'][token_name.lower()])
 
     def deposit(self, base: BaseAccount, token_name: str, token_address: Address, amount: Wad) -> bool:
         assert(isinstance(base, BaseAccount))
         assert(isinstance(token_name, str))
-        assert(isinstance(token_address, Address))
+        assert(isinstance(token_address, Address) or (token_address is None))
         assert(isinstance(amount, Wad))
 
         raise Exception(f"Deposits to OKEX not supported")
@@ -287,7 +291,7 @@ class OkexMarketMakerKeeper:
     def withdraw(self, base: BaseAccount, token_name: str, token_address: Address, amount: Wad) -> bool:
         assert(isinstance(base, BaseAccount))
         assert(isinstance(token_name, str))
-        assert(isinstance(token_address, Address))
+        assert(isinstance(token_address, Address) or (token_address is None))
         assert(isinstance(amount, Wad))
 
         raise Exception(f"Withdrawals from OKEX not supported")

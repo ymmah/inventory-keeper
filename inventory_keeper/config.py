@@ -19,6 +19,8 @@ import threading
 from pprint import pformat
 
 import os
+from typing import Optional
+
 from web3 import Web3
 
 from inventory_keeper.type import OasisMarketMakerKeeper, RadarRelayMarketMakerKeeper, BiboxMarketMakerKeeper, \
@@ -53,7 +55,7 @@ class Config:
     def __init__(self, data: dict):
         assert(isinstance(data, dict))
 
-        self.tokens = [Token(key, Address(value)) for key, value in data['tokens'].items()]
+        self.tokens = [Token(key, Address(value) if value != "" else None) for key, value in data['tokens'].items()]
         self.base_name = data['base']['name']
         self.base_address = Address(data['base']['address'])
         self.base_min_eth_balance = Wad.from_number(data['base']['minEthBalance'])
@@ -64,9 +66,9 @@ class Config:
 
 
 class Token:
-    def __init__(self, name: str, address: Address):
+    def __init__(self, name: str, address: Optional[Address]):
         assert(isinstance(name, str))
-        assert(isinstance(address, Address))
+        assert(isinstance(address, Address) or (address is None))
 
         self.name = name
         self.address = address
