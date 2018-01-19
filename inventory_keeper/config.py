@@ -122,7 +122,7 @@ class Member:
             okex_api = OKEXApi(api_server="https://www.okex.com",
                                  api_key=self._environ(self.config['apiKey']),
                                  secret_key=self._environ(self.config['secretKey']),
-                                 timeout=9.5)
+                                 timeout=15.5)
             self._type_object = OkexMarketMakerKeeper(web3=web3, okex_api=okex_api)
         elif self.type == 'gateio-market-maker-keeper':
             gateio_api = GateIOApi(api_server="https://data.gate.io",
