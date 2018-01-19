@@ -21,6 +21,7 @@ from retry import retry
 from web3 import Web3
 
 from pyexchange.bibox import BiboxApi
+from pyexchange.gateio import GateIOApi
 from pyexchange.okex import OKEXApi
 from pymaker import Address, eth_transfer
 from pymaker.etherdelta import EtherDelta
@@ -296,3 +297,45 @@ class OkexMarketMakerKeeper:
         assert(isinstance(amount, Wad))
 
         raise Exception(f"Withdrawals from OKEX not supported")
+
+
+class GateIOMarketMakerKeeper:
+    def __init__(self, web3: Web3, gateio_api: GateIOApi):
+        assert(isinstance(web3, Web3))
+        assert(isinstance(gateio_api, GateIOApi))
+
+        self.web3 = web3
+        self.gateio_api = gateio_api
+
+    @retry(tries=5, delay=0.5, backoff=1.5, logger=logging.getLogger())
+    def balance(self, token_name: str, token_address: Address) -> Wad:
+        assert(isinstance(token_name, str))
+        assert(isinstance(token_address, Address) or (token_address is None))
+
+        balances = self.gateio_api.get_balances()
+
+        result = Wad(0)
+        if 'available' in balances:
+            if token_name.upper() in balances['available']:
+                result += Wad.from_number(balances['available'][token_name.upper()])
+        if 'locked' in balances:
+            if token_name.upper() in balances['locked']:
+                result += Wad.from_number(balances['locked'][token_name.upper()])
+
+        return result
+
+    def deposit(self, base: BaseAccount, token_name: str, token_address: Address, amount: Wad) -> bool:
+        assert(isinstance(base, BaseAccount))
+        assert(isinstance(token_name, str))
+        assert(isinstance(token_address, Address) or (token_address is None))
+        assert(isinstance(amount, Wad))
+
+        raise Exception(f"Deposits to Gate.io not supported")
+
+    def withdraw(self, base: BaseAccount, token_name: str, token_address: Address, amount: Wad) -> bool:
+        assert(isinstance(base, BaseAccount))
+        assert(isinstance(token_name, str))
+        assert(isinstance(token_address, Address) or (token_address is None))
+        assert(isinstance(amount, Wad))
+
+        raise Exception(f"Withdrawals from Gate.io not supported")

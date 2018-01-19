@@ -24,8 +24,9 @@ from typing import Optional
 from web3 import Web3
 
 from inventory_keeper.type import OasisMarketMakerKeeper, RadarRelayMarketMakerKeeper, BiboxMarketMakerKeeper, \
-    EtherDeltaMarketMakerKeeper, OkexMarketMakerKeeper
+    EtherDeltaMarketMakerKeeper, OkexMarketMakerKeeper, GateIOMarketMakerKeeper
 from pyexchange.bibox import BiboxApi
+from pyexchange.gateio import GateIOApi
 from pyexchange.okex import OKEXApi
 from pymaker import Address
 from pymaker.etherdelta import EtherDelta
@@ -123,6 +124,12 @@ class Member:
                                  secret_key=self._environ(self.config['secretKey']),
                                  timeout=9.5)
             self._type_object = OkexMarketMakerKeeper(web3=web3, okex_api=okex_api)
+        elif self.type == 'gateio-market-maker-keeper':
+            gateio_api = GateIOApi(api_server="https://data.gate.io",
+                                  api_key=self._environ(self.config['apiKey']),
+                                  secret_key=self._environ(self.config['secretKey']),
+                                  timeout=9.5)
+            self._type_object = GateIOMarketMakerKeeper(web3=web3, gateio_api=gateio_api)
         else:
             raise Exception(f"Unknown member type: '{self.type}'")
 
